@@ -64,6 +64,33 @@ const desktopModulePath = join(
   'dsh-desktop-market-installer',
   'index.js',
 )
+const generationInstallerPath = join(
+  desktopRoot,
+  'resources',
+  'app',
+  'node_modules',
+  'dsh-desktop-market-installer',
+  'generations',
+  'installer.mjs',
+)
+const generationProjectionPath = join(
+  desktopRoot,
+  'resources',
+  'app',
+  'node_modules',
+  'dsh-desktop-market-installer',
+  'generations',
+  'projection.mjs',
+)
+const generationRegistryPath = join(
+  desktopRoot,
+  'resources',
+  'app',
+  'node_modules',
+  'dsh-desktop-market-installer',
+  'generations',
+  'registry.mjs',
+)
 const nodePath = join(
   desktopRoot,
   'resources',
@@ -79,11 +106,23 @@ if (!existsSync(desktopModulePath)) {
 if (!existsSync(nodePath)) throw new Error(`DSH Desktop bundled Node not found: ${nodePath}`)
 
 const desktopModuleUrl = pathToFileURL(desktopModulePath).href
-const desktop = await import(desktopModuleUrl)
+const [desktopEntry, generationInstaller, generationProjection, generationRegistry] = await Promise.all([
+  import(desktopModuleUrl),
+  import(pathToFileURL(generationInstallerPath).href),
+  import(pathToFileURL(generationProjectionPath).href),
+  import(pathToFileURL(generationRegistryPath).href),
+])
+const desktop = {
+  ...desktopEntry,
+  ...generationInstaller,
+  ...generationProjection,
+  ...generationRegistry,
+}
 const required = [
   'exposeMissingGenerationLinks',
   'installGeneration',
   'listGenerations',
+  'projectGenerations',
   'publishGenerationManifest',
   'readDesired',
   'resolvePnpmEntry',
@@ -136,7 +175,12 @@ const result = await desktop.withRegistryLock(dshHome, async () => {
   // start runs the full safe projection and atomically replaces old entries.
   const exposed = await desktop.exposeMissingGenerationLinks(dshHome, options.profile)
   const published = await desktop.publishGenerationManifest(dshHome, options.profile)
-  return { install, exposed, published }
+  // The one-click installer requires DSH Desktop to be fully closed.  Project
+  // immediately in that safe state so the profile manifest already contains
+  // the bundle before the next launch (the live market intentionally defers
+  // this operation until its cold-start projector).
+  const projected = await desktop.projectGenerations(dshHome, options.profile)
+  return { install, exposed, published, projected }
 })
 
 const manifest = await readJson(profileManifestPath)
@@ -154,5 +198,6 @@ if (!bundles.includes(PLUGIN_NAME)) {
 console.log(`Generation installed: ${result.install.generation.id}`)
 if (result.exposed.length > 0) console.log(`Available for validation: ${result.exposed.join(', ')}`)
 console.log(`Staged for next restart: ${result.published.plugins.join(', ')}`)
+console.log(`Projected profile layers: ${result.projected.linked.join(', ')}`)
 console.log(`Bundles: ${JSON.stringify(result.published.bundles)}`)
 console.log(`Installed and registered: ${PLUGIN_NAME}@${dependencies[PLUGIN_NAME]}`)
