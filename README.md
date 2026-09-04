@@ -27,28 +27,26 @@ DSH 的会话日志是追加式的，因此“编辑重发”不会删除历史�
 先**完全退出 DSH Desktop**，再在 PowerShell 中执行（当前稳定版本）：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.11/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.11'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.12/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.12'
 ```
 
 脚本会自动定位常见的 DSH Desktop 安装目录（包括 `D:\DSH\DSH Desktop` 与 `%LOCALAPPDATA%\Programs\DSH Desktop`），设置正确的 Desktop Harness home，并使用桌面版自带的 generation installer 将 GitHub 插件放入独立代际；这一步比直接写入共享 `node_modules` 更可靠，能保证 Web Client 在冷启动时发现插件。旧版本留下的共享安装会先被安全移除。
 
-```powershell
-dsh plugin --profile web add --save-exact github:1985899182/dsh-harness-chat-control#v0.2.11
-```
+如果当前 DSH Desktop 没有代际安装器，脚本会自动回退到内置 CLI 命令 `dsh plugin --profile web add --save-exact`；不需要手动执行两套安装命令。
 
 随后它会读取 `%APPDATA%\dsh-desktop\harness\profiles\web\package.json`，确认 `dependencies`、`dsh.profile.bundles` 和代际投影都已包含 `dsh-harness-chat-control`。如果 profile 之前由 pnpm 10 建立、而当前 PATH 是 pnpm 11，安装器会临时通过 Corepack 使用 profile 记录的 pnpm 主版本，不会强制重装整个 profile。成功后请重新打开 DSH Desktop；Desktop 版不依赖浏览器硬刷新。
 
 如安装目录不在自动探测范围内，或想先只查看将要执行的操作：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.11/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'v0.2.11' -DryRun
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.12/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'v0.2.12' -DryRun
 ```
 
 `-Ref` 可以换成已发布的 Git tag 或提交 SHA，以固定安装版本。通过 `main` 安装时，更新只需在完全退出 DSH Desktop 后重新执行一键命令；若使用 `main`，脚本地址也相应改为 `.../main/scripts/install.ps1`。
 
-为兼容 DSH Desktop 0.7.2 的 GitHub 更新检测，发布版本请使用**轻量 tag**（例如 `git tag v0.2.11`），不要使用带注释的 `git tag -a`。该 Desktop 版本直接比较 `refs/tags/*` 返回值；带注释的 tag 返回 tag object，而不是实际提交，会造成“更新后版本没有变化”的误报。
+为兼容 DSH Desktop 0.7.2 的 GitHub 更新检测，发布版本请使用**轻量 tag**（例如 `git tag v0.2.12`），不要使用带注释的 `git tag -a`。该 Desktop 版本直接比较 `refs/tags/*` 返回值；带注释的 tag 返回 tag object，而不是实际提交，会造成“更新后版本没有变化”的误报。
 
 ### 从本地源码安装
 

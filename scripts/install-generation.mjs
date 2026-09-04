@@ -25,6 +25,7 @@ function parseArgs(argv) {
     profile: DEFAULT_PROFILE,
     desktopRoot: process.env.DSH_DESKTOP_ROOT || DEFAULT_DESKTOP_ROOT,
     ref: 'main',
+    sourceDirectory: undefined,
   }
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index]
@@ -37,6 +38,7 @@ function parseArgs(argv) {
     else if (key === 'profile') options.profile = value
     else if (key === 'desktop-root') options.desktopRoot = value
     else if (key === 'ref') options.ref = value
+    else if (key === 'source-directory') options.sourceDirectory = resolve(value)
     else throw new Error(`Unknown option: --${key}`)
   }
   return options
@@ -56,6 +58,9 @@ assertSafe(options.ref, 'ref', /^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._/-]*$/u)
 assertSafe(options.repository, 'repository', /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u)
 
 const desktopRoot = resolve(options.desktopRoot)
+if (options.sourceDirectory !== undefined && !existsSync(options.sourceDirectory)) {
+  throw new Error(`Local source directory not found: ${options.sourceDirectory}`)
+}
 const desktopModulePath = join(
   desktopRoot,
   'resources',
@@ -146,6 +151,7 @@ console.log(`DSH Desktop: ${desktopRoot}`)
 console.log(`Harness home: ${dshHome}`)
 console.log(`Profile: ${options.profile}`)
 console.log(`Plugin source: ${pluginSpec}`)
+if (options.sourceDirectory !== undefined) console.log(`Local source overlay: ${options.sourceDirectory}`)
 
 const result = await desktop.withRegistryLock(dshHome, async () => {
   const install = await desktop.installGeneration({
@@ -153,6 +159,7 @@ const result = await desktop.withRegistryLock(dshHome, async () => {
     profile: options.profile,
     pluginSpec,
     sourceSpec: pluginSpec,
+    ...(options.sourceDirectory === undefined ? {} : { sourceDirectory: options.sourceDirectory }),
     expectedPluginName: PLUGIN_NAME,
     nodeExecutablePath: nodePath,
     pnpmEntryPath: desktop.resolvePnpmEntry(desktopModuleUrl),

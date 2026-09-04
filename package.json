@@ -1,6 +1,6 @@
 {
   "name": "dsh-harness-chat-control",
-  "version": "0.2.11",
+  "version": "0.2.12",
   "description": "ChatGPT-style stop, revise, quote, and side-question controls for DeepSeek Harness Desktop UI.",
   "type": "module",
   "main": "./lib/index.js",
@@ -10,7 +10,8 @@
     },
     "./client": {
       "default": "./lib/client.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "lib",
