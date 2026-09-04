@@ -22,7 +22,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.19') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.20') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -55,7 +55,7 @@ const installer = readFileSync(installerPath, 'utf8')
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "github:$Repository#$Ref"')) {
   throw new Error('Installer must use the canonical GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.19'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.20'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!installer.includes('dsh.profile.bundles')) {
@@ -68,7 +68,7 @@ if (!readFileSync(resolve(root, 'README.md'), 'utf8').includes('scripts/install.
   throw new Error('README must document the one-command installer')
 }
 const readme = readFileSync(resolve(root, 'README.md'), 'utf8')
-for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.17.1', '侧边原生 composer']) {
+for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.17.1', '侧边原生 composer', '铅笔按钮', '卡死']) {
   if (!readme.includes(phrase)) throw new Error(`README is missing the native reference/sidechat note: ${phrase}`)
 }
 if (process.platform === 'win32') {
@@ -122,6 +122,12 @@ const browserSandbox = {
 const clientSource = readFileSync(resolve(root, 'lib/client.js'), 'utf8')
 if (!clientSource.includes("!classes.includes('sidechatComposerInput')")) {
   throw new Error('Sidechat composer selector must not treat the controlled textarea as its parent')
+}
+if (!clientSource.includes('queueObserverFlush') || !clientSource.includes('label.textContent !== preview')) {
+  throw new Error('Sidechat reference bridge must coalesce mutations and update chip text idempotently')
+}
+if (!clientSource.includes('dshhc-message-edit') || !clientSource.includes('编辑并重新发送')) {
+  throw new Error('ChatGPT-style user message edit affordance is missing')
 }
 for (const label of ['添加到对话', '更多详情', '在侧边聊天中提问']) {
   if (!clientSource.includes(label)) throw new Error(`Selection toolbar label is missing: ${label}`)
@@ -304,6 +310,9 @@ if (revisionView === null) throw new Error('Revision dock cannot read the DSH De
 
 const shellProps = shellRegistration.config.inject()
 const selectionStore = shellProps.selectionStore
+if (shellProps.revisionStore?.getSnapshot?.().revision !== 0) throw new Error('Revision request store did not start at revision zero')
+shellProps.revisionStore.request()
+if (shellProps.revisionStore.getSnapshot().revision !== 1) throw new Error('ChatGPT-style edit request did not publish a revision')
 const referenceCalls = []
 selectionStore.show({
   text: '选中的回答片段',
@@ -317,8 +326,13 @@ const shellView = shellRegistration.component({
   openSideChat: (...args) => sideCalls.push(args),
   useSessions: (select) => select({ current: 'desktop-session-1' })
 })
-if (shellView?.args?.[0]?.name !== 'SelectionToolbar') throw new Error('Selection toolbar is not mounted in shell overlay')
-const selectionView = shellView.args[0](shellView.args[1])
+const shellChildren = shellView?.args?.slice(2) || []
+const selectionChild = shellChildren.find((child) => child?.args?.[0]?.name === 'SelectionToolbar')
+if (selectionChild === undefined) throw new Error('Selection toolbar is not mounted in shell overlay')
+if (!shellChildren.some((child) => child?.args?.[0]?.name === 'UserEditOverlay')) {
+  throw new Error('ChatGPT-style user edit overlay is not mounted in shell overlay')
+}
+const selectionView = selectionChild.args[0](selectionChild.args[1])
 const toolbar = selectionView?.args?.[2]
 const buttons = toolbar?.args?.slice(2) || []
 if (buttons.length !== 3) throw new Error('Selection toolbar must expose three actions')
@@ -333,7 +347,7 @@ selectionStore.show({
   rect: { left: 240, top: 80, width: 100, height: 20, right: 290, bottom: 100 },
   placement: 'above'
 })
-const detailView = shellView.args[0](shellView.args[1])
+const detailView = selectionChild.args[0](selectionChild.args[1])
 const detailButtons = detailView.args[2].args.slice(2)
 detailButtons[1].args[1].onClick({})
 if (sideCalls.at(-1)?.[0] !== 'desktop-session-1' || sideCalls.at(-1)?.[1] !== '需要解释的片段' || !sideCalls.at(-1)?.[2].includes('详细解释')) {
@@ -346,7 +360,7 @@ selectionStore.show({
   rect: { left: 240, top: 80, width: 100, height: 20, right: 290, bottom: 100 },
   placement: 'above'
 })
-const sideView = shellView.args[0](shellView.args[1])
+const sideView = selectionChild.args[0](selectionChild.args[1])
 const sideButtons = sideView.args[2].args.slice(2)
 sideButtons[2].args[1].onClick({})
 if (sideCalls.at(-1)?.[0] !== 'desktop-session-1' || sideCalls.at(-1)?.[1] !== '需要带入侧边聊天的片段' || !sideCalls.at(-1)?.[2].includes('最重要的结论')) {
