@@ -1,13 +1,17 @@
 # DSH Harness Chat Control
 
-一个面向 **DSH Desktop 0.7.2**（内置 DeepSeek Harness `0.1.2-alpha.1`）的原生插件，提供接近 ChatGPT 的会话交互补强：停止并修改重发、引用 AI 输出到主对话，以及右侧侧栏追问。
+一个面向 **DSH Desktop 0.7.2**（内置 DeepSeek Harness `0.1.2-alpha.1`）的原生插件，提供接近 ChatGPT 的会话交互补强：停止并修改重发、选中文字浮动工具条、引用 AI 输出到主对话，以及右侧侧栏追问。
 
 ## 功能
 
 - **停止并编辑重发**：在输入框上方显示最近一条用户消息。生成中点击“停止并编辑”会调用 DSH 的取消接口；修改后重新发送时，仍在运行则采用 `steer`（打断当前轮次），空闲时采用 `queue`（开启下一轮）。
 - **回答引用**：每个已完成 AI 回答的操作条新增“引用”和“侧栏问”。先选中文字可只引用选区；未选中时引用整条回答。
+- **选中文字浮动工具条**：在用户或 AI 消息中选中文字后，选区上方显示“添加到对话 / 更多详情 / 在侧边聊天中提问”三段式圆角工具条；滚动或窗口尺寸变化时会自动跟随选区。
 - **主对话追问**：“引用”会把 Markdown 引用和追问提示追加到主输入框，不会自动发送，方便继续编辑。
+- **添加到对话**：浮动工具条中的“添加到对话”沿用同一会话的输入框草稿和引用格式，不会跳转或自动发送。
+- **更多详情**：浮动工具条中的“更多详情”打开右侧面板，并预填详细解释提示；你可以修改提示后再发送。
 - **右侧侧栏追问**：“侧栏问”会带着引用打开右侧面板。面板中的问题以排队消息发送到原会话，因此不会打断正在生成的回答。
+- **在侧边聊天中提问**：浮动工具条中的该动作携带选中文本打开侧栏，输入问题后排队发送到原会话。
 - **侧栏入口**：左侧导航底部提供“侧栏追问”按钮，可重新打开面板或清除引用后普通提问。
 
 ## 重要语义
@@ -27,8 +31,8 @@ DSH 的会话日志是追加式的，因此“编辑重发”不会删除历史�
 先**完全退出 DSH Desktop**，再在 PowerShell 中执行（当前稳定版本）：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.12/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.12'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.13/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.13'
 ```
 
 脚本会自动定位常见的 DSH Desktop 安装目录（包括 `D:\DSH\DSH Desktop` 与 `%LOCALAPPDATA%\Programs\DSH Desktop`），设置正确的 Desktop Harness home，并使用桌面版自带的 generation installer 将 GitHub 插件放入独立代际；这一步比直接写入共享 `node_modules` 更可靠，能保证 Web Client 在冷启动时发现插件。旧版本留下的共享安装会先被安全移除。
@@ -40,13 +44,13 @@ $script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-co
 如安装目录不在自动探测范围内，或想先只查看将要执行的操作：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.12/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'v0.2.12' -DryRun
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.13/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'v0.2.13' -DryRun
 ```
 
 `-Ref` 可以换成已发布的 Git tag 或提交 SHA，以固定安装版本。通过 `main` 安装时，更新只需在完全退出 DSH Desktop 后重新执行一键命令；若使用 `main`，脚本地址也相应改为 `.../main/scripts/install.ps1`。
 
-为兼容 DSH Desktop 0.7.2 的 GitHub 更新检测，发布版本请使用**轻量 tag**（例如 `git tag v0.2.12`），不要使用带注释的 `git tag -a`。该 Desktop 版本直接比较 `refs/tags/*` 返回值；带注释的 tag 返回 tag object，而不是实际提交，会造成“更新后版本没有变化”的误报。
+为兼容 DSH Desktop 0.7.2 的 GitHub 更新检测，发布版本请使用**轻量 tag**（例如 `git tag v0.2.13`），不要使用带注释的 `git tag -a`。该 Desktop 版本直接比较 `refs/tags/*` 返回值；带注释的 tag 返回 tag object，而不是实际提交，会造成“更新后版本没有变化”的误报。
 
 ### 从本地源码安装
 

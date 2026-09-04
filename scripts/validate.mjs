@@ -25,6 +25,7 @@ if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected pa
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
+if (manifest.exports?.['./package.json'] !== './package.json') throw new Error('Missing package manifest export for Desktop discovery')
 if (!manifest.files?.includes('scripts')) throw new Error('The distributable package must include its installer')
 if (manifest.engines?.node !== '>=20' || manifest.engines?.pnpm !== '>=10 <12') {
   throw new Error('The package must declare the supported Node.js and pnpm ranges')
@@ -102,6 +103,11 @@ const browserSandbox = {
     head: { appendChild: () => {} }
   },
   console
+}
+
+const clientSource = readFileSync(resolve(root, 'lib/client.js'), 'utf8')
+for (const label of ['添加到对话', '更多详情', '在侧边聊天中提问']) {
+  if (!clientSource.includes(label)) throw new Error(`Selection toolbar label is missing: ${label}`)
 }
 
 vm.runInNewContext(readFileSync(resolve(root, 'lib/client.js'), 'utf8'), browserSandbox, {
