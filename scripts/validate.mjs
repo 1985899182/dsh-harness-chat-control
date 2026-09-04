@@ -156,6 +156,22 @@ const desktopChatSnapshot = {
   ])
 }
 
+// The current DSH Desktop TurnTailNodeView passes the completed answer as
+// `node.data.closing.blocks`; `closing.finalNode` only carries message identity.
+const desktopTurnTailSnapshot = {
+  nodes: new Map([
+    ['tail', {
+      kind: 'turn-tail',
+      data: {
+        closing: {
+          finalNode: { messageId: 'desktop-tail-answer-1', seq: 42 },
+          blocks: [{ kind: 'text', text: '这是 TurnTail 中的 DSH Desktop 回答。' }]
+        }
+      }
+    }]
+  ])
+}
+
 const quoteRegistration = registrations.find(({ config }) => config.id === 'harness-quote-actions')
 const revisionRegistration = registrations.find(({ config }) => config.id === 'harness-revision')
 if (quoteRegistration === undefined || revisionRegistration === undefined) {
@@ -170,6 +186,15 @@ const quoteView = quoteRegistration.component({
   openSide: () => {}
 })
 if (quoteView === null) throw new Error('Assistant action cannot read the DSH Desktop chat snapshot')
+
+const tailQuoteView = quoteRegistration.component({
+  messageId: 'desktop-tail-answer-1',
+  useChat: (select) => select(desktopTurnTailSnapshot),
+  useInput: (select) => select({ draft: '' }),
+  inputActions: { setDraft: () => {} },
+  openSide: () => {}
+})
+if (tailQuoteView === null) throw new Error('Assistant action cannot read the current TurnTail snapshot')
 
 const revisionView = revisionRegistration.component({
   useChat: (select) => select(desktopChatSnapshot),
