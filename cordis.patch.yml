@@ -1,0 +1,3 @@
+- insert:
+    - id: harness-chat-control
+      name: dsh-harness-chat-control

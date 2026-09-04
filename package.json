@@ -1,0 +1,58 @@
+{
+  "name": "dsh-harness-chat-control",
+  "version": "0.2.1",
+  "description": "ChatGPT-style stop, revise, quote, and side-question controls for DeepSeek Harness Desktop UI.",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    }
+  },
+  "files": [
+    "lib",
+    "scripts",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node ./scripts/validate.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-ui-chat",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-api-session-controller": "^0.1.2-alpha.1",
+    "@deepseek-ai/dsh-client-ui-chat": "^0.1.2-alpha.1",
+    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.2-alpha.1",
+    "@deepseek-ai/dsh-client-ui-layout": "^0.1.2-alpha.1",
+    "@deepseek-ai/dsh-client-ui-sidebar": "^0.1.2-alpha.1",
+    "@deepseek-ai/dsh-client-ui-session": "^0.1.2-alpha.1",
+    "react": "^18.2.0"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "chat",
+    "quote",
+    "follow-up"
+  ],
+  "license": "MIT"
+}
