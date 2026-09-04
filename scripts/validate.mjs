@@ -52,6 +52,9 @@ if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") |
 if (!installer.includes('dsh.profile.bundles')) {
   throw new Error('Installer must verify DSH bundle registration')
 }
+if (!readFileSync(resolve(root, 'cordis.patch.yml'), 'utf8').includes('inject: [clientModules]')) {
+  throw new Error('Host patch must wait for the clientModules service before mounting')
+}
 if (!readFileSync(resolve(root, 'README.md'), 'utf8').includes('scripts/install.ps1')) {
   throw new Error('README must document the one-command installer')
 }
