@@ -1,6 +1,6 @@
 {
   "name": "dsh-harness-chat-control",
-  "version": "0.2.16",
+  "version": "0.2.17",
   "description": "ChatGPT-style stop, revise, native annotation-chip quote, and Better Sidebar sidechat controls for DeepSeek Harness Desktop UI.",
   "type": "module",
   "main": "./lib/index.js",
