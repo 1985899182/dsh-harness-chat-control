@@ -18,35 +18,35 @@ DSH 的会话日志是追加式的，因此“编辑重发”不会删除历史�
 
 ## 安装
 
-适用环境：**DSH Desktop 0.7.2**（内置 DeepSeek Harness `0.1.2-alpha.1`）、Windows PowerShell、Git 和 pnpm 10+。桌面版使用自己的 Harness home：`%APPDATA%\dsh-desktop\harness`，而非 `~\.dsh`。
+适用环境：**DSH Desktop 0.7.2**（内置 DeepSeek Harness `0.1.2-alpha.1`）、Node.js 20+、Windows PowerShell、Git 和 pnpm 10.x/11.x。桌面版使用自己的 Harness home：`%APPDATA%\dsh-desktop\harness`，而非 `~\.dsh`。
 
 安装器通过 DSH Desktop 内置 CLI 管理插件依赖和 bundle 注册；它不会手动改写 `cordis.patch.yml`，也不会修改模型、会话或凭据。
 
 ### 一键安装
 
-先**完全退出 DSH Desktop**，再在 PowerShell 中执行：
+先**完全退出 DSH Desktop**，再在 PowerShell 中执行（当前稳定版本）：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/main/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'main'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.2/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.2'
 ```
 
 脚本会自动定位常见的 DSH Desktop 安装目录（包括 `D:\DSH\DSH Desktop` 与 `%LOCALAPPDATA%\Programs\DSH Desktop`），设置正确的 Desktop Harness home，并等价执行：
 
 ```powershell
-dsh plugin --profile web add --save-exact github:1985899182/dsh-harness-chat-control#main
+dsh plugin --profile web add --save-exact github:1985899182/dsh-harness-chat-control#v0.2.2
 ```
 
-随后它会读取 `%APPDATA%\dsh-desktop\harness\profiles\web\package.json`，确认 `dependencies` 和 `dsh.profile.bundles` 都已包含 `dsh-harness-chat-control`。成功后请重新打开 DSH Desktop；Desktop 版不依赖浏览器硬刷新。
+随后它会读取 `%APPDATA%\dsh-desktop\harness\profiles\web\package.json`，确认 `dependencies` 和 `dsh.profile.bundles` 都已包含 `dsh-harness-chat-control`。如果 profile 之前由 pnpm 10 建立、而当前 PATH 是 pnpm 11，安装器会临时通过 Corepack 使用 profile 记录的 pnpm 主版本，不会强制重装整个 profile。成功后请重新打开 DSH Desktop；Desktop 版不依赖浏览器硬刷新。
 
 如安装目录不在自动探测范围内，或想先只查看将要执行的操作：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/main/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'main' -DryRun
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.2/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'v0.2.2' -DryRun
 ```
 
-`-Ref` 可以换成已发布的 Git tag 或提交 SHA，以固定安装版本。通过 `main` 安装时，更新只需在完全退出 DSH Desktop 后重新执行一键命令。
+`-Ref` 可以换成已发布的 Git tag 或提交 SHA，以固定安装版本。通过 `main` 安装时，更新只需在完全退出 DSH Desktop 后重新执行一键命令；若使用 `main`，脚本地址也相应改为 `.../main/scripts/install.ps1`。
 
 ### 从本地源码安装
 

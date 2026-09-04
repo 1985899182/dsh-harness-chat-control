@@ -25,6 +25,9 @@ if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missi
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
 if (!manifest.files?.includes('scripts')) throw new Error('The distributable package must include its installer')
+if (manifest.engines?.node !== '>=20' || manifest.engines?.pnpm !== '>=10 <12') {
+  throw new Error('The package must declare the supported Node.js and pnpm ranges')
+}
 
 const desktopClientDependencies = [
   '@deepseek-ai/dsh-api-session-controller',
