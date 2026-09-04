@@ -185,9 +185,11 @@ const desktopTurnTailSnapshot = {
 
 const quoteRegistration = registrations.find(({ config }) => config.id === 'harness-quote-actions')
 const revisionRegistration = registrations.find(({ config }) => config.id === 'harness-revision')
+const shellRegistration = registrations.find(({ config }) => config.id === 'harness-side-question-panel')
 if (quoteRegistration === undefined || revisionRegistration === undefined) {
   throw new Error('Required Desktop UI registrations are missing')
 }
+if (shellRegistration === undefined) throw new Error('Selection toolbar shell registration is missing')
 
 const quoteView = quoteRegistration.component({
   messageId: 'desktop-answer-1',
@@ -214,5 +216,60 @@ const revisionView = revisionRegistration.component({
   stop: async () => {}
 })
 if (revisionView === null) throw new Error('Revision dock cannot read the DSH Desktop chat snapshot')
+
+const shellProps = shellRegistration.config.inject()
+const selectionStore = shellProps.selectionStore
+const inputBridge = shellProps.inputBridge
+const draftUpdates = []
+inputBridge.set('desktop-session-1', {
+  setDraft(value) {
+    draftUpdates.push(value)
+  }
+}, { draft: '' })
+selectionStore.show({
+  text: '选中的回答片段',
+  sessionId: 'desktop-session-1',
+  rect: { left: 240, top: 80, width: 100, height: 20, right: 290, bottom: 100 },
+  placement: 'above'
+})
+const shellView = shellRegistration.component({
+  ...shellProps,
+  useSessions: (select) => select({ current: 'desktop-session-1' })
+})
+const shellChildren = shellView?.args?.slice(2) || []
+const selectionElement = shellChildren.find((child) => child?.args?.[0]?.name === 'SelectionToolbar')
+if (selectionElement === undefined) throw new Error('Selection toolbar is not mounted in shell overlay')
+const selectionView = selectionElement.args[0](selectionElement.args[1])
+const toolbar = selectionView?.args?.[2]
+const buttons = toolbar?.args?.slice(2) || []
+if (buttons.length !== 3) throw new Error('Selection toolbar must expose three actions')
+buttons[0].args[1].onClick({})
+if (draftUpdates.length !== 1 || !draftUpdates[0].includes('选中的回答片段')) {
+  throw new Error('Selection toolbar cannot append the selected text to the main composer')
+}
+
+selectionStore.show({
+  text: '需要解释的片段',
+  sessionId: 'desktop-session-1',
+  rect: { left: 240, top: 80, width: 100, height: 20, right: 290, bottom: 100 },
+  placement: 'above'
+})
+const detailView = selectionElement.args[0](selectionElement.args[1])
+detailView.args[2].args[3].args[1].onClick({})
+if (!shellProps.panelStore.getSnapshot().initialQuestion.includes('详细解释')) {
+  throw new Error('The details action did not prepare the contextual side prompt')
+}
+
+selectionStore.show({
+  text: '需要带入侧边聊天的片段',
+  sessionId: 'desktop-session-1',
+  rect: { left: 240, top: 80, width: 100, height: 20, right: 290, bottom: 100 },
+  placement: 'above'
+})
+const sideView = selectionElement.args[0](selectionElement.args[1])
+sideView.args[2].args[4].args[1].onClick({})
+if (shellProps.panelStore.getSnapshot().reference?.text !== '需要带入侧边聊天的片段') {
+  throw new Error('The side-chat action did not carry the selected text')
+}
 
 console.log('dsh-harness-chat-control: static and loader validation passed')
