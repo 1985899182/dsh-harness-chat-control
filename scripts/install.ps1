@@ -21,6 +21,7 @@ $SupportedPnpmMajors = @(10, 11)
 $NodeRelativePath = 'resources\app\node_modules\node\bin\node.exe'
 $DshRelativePath = 'resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $DshPackageRelativePath = 'resources\app\node_modules\@deepseek-ai\dsh\package.json'
+$GenerationInstallerRelativePath = 'resources\app\node_modules\dsh-desktop-market-installer\index.js'
 
 function Resolve-DesktopInstallation {
     param(
@@ -56,6 +57,7 @@ function Resolve-DesktopInstallation {
         $nodePath = Join-Path $root $NodeRelativePath
         $dshPath = Join-Path $root $DshRelativePath
         $manifestPath = Join-Path $root $DshPackageRelativePath
+        $generationInstallerPath = Join-Path $root $GenerationInstallerRelativePath
         if ((Test-Path -LiteralPath $nodePath -PathType Leaf) -and
             (Test-Path -LiteralPath $dshPath -PathType Leaf) -and
             (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
@@ -64,6 +66,7 @@ function Resolve-DesktopInstallation {
                 NodePath = $nodePath
                 DshPath = $dshPath
                 ManifestPath = $manifestPath
+                GenerationInstallerPath = $generationInstallerPath
             }
         }
     }
@@ -167,6 +170,48 @@ function Read-JsonFile {
     return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
 }
 
+function Remove-LegacyProfilePackage {
+    param(
+        [string]$ProfileRoot,
+        [object]$ProfileManifest
+    )
+
+    $dependencies = @{}
+    if ($null -ne $ProfileManifest.dependencies) {
+        foreach ($property in $ProfileManifest.dependencies.PSObject.Properties) {
+            $dependencies[$property.Name] = [string]$property.Value
+        }
+    }
+    if (-not $dependencies.ContainsKey($PluginName)) {
+        return
+    }
+
+    $projection = $null
+    try {
+        $projection = $ProfileManifest.dsh.desktop.generationProjection.plugins
+    } catch {
+        $projection = $null
+    }
+    if ($null -ne $projection -and $null -ne $projection.PSObject.Properties[$PluginName]) {
+        Write-Host "$PluginName 已由 DSH Desktop 代际安装管理，跳过旧版清理。"
+        return
+    }
+
+    $packagePath = Join-Path $ProfileRoot (Join-Path 'node_modules' $PluginName)
+    $packageItem = Get-Item -LiteralPath $packagePath -Force -ErrorAction SilentlyContinue
+    $isReparsePoint = $null -ne $packageItem -and (($packageItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)
+    if ($isReparsePoint) {
+        Write-Host "$PluginName 当前是代际链接，跳过旧版清理。"
+        return
+    }
+
+    Write-Host "$PluginName 是旧的共享 profile 安装，先移除后切换到 DSH Desktop 代际安装。"
+    & $desktop.NodePath $desktop.DshPath plugin --profile $Profile remove $PluginName
+    if ($LASTEXITCODE -ne 0) {
+        throw "无法移除旧的 $PluginName 安装（退出码：$LASTEXITCODE）。"
+    }
+}
+
 $desktop = Resolve-DesktopInstallation -RequestedRoot $DesktopRoot
 $dshManifest = Read-JsonFile -Path $desktop.ManifestPath
 if ($dshManifest.version -ne $SupportedHarnessVersion) {
@@ -191,15 +236,38 @@ Write-Host "插件来源：$packageSpec"
 
 if ($DryRun) {
     Write-Host 'Dry run：未修改 DSH profile。将执行：'
-    Write-Host "& '$($desktop.NodePath)' '$($desktop.DshPath)' plugin --profile $Profile add --save-exact '$packageSpec'"
+    Write-Host "若 profile 中存在旧的共享安装，将先执行：& '$($desktop.NodePath)' '$($desktop.DshPath)' plugin --profile $Profile remove $PluginName"
+    Write-Host "然后通过 DSH Desktop 代际安装器安装：$packageSpec"
     return
 }
 
 $pnpmState = Use-ProfilePnpm -ProfileRoot $profileRoot
 try {
-    & $desktop.NodePath $desktop.DshPath plugin --profile $Profile add --save-exact $packageSpec
-    if ($LASTEXITCODE -ne 0) {
-        throw "DSH 插件安装失败（退出码：$LASTEXITCODE）。请保留上方 pnpm 输出以便排查。"
+    $existingManifest = Read-JsonFile -Path $profileManifestPath
+    Remove-LegacyProfilePackage -ProfileRoot $profileRoot -ProfileManifest $existingManifest
+
+    if (-not (Test-Path -LiteralPath $desktop.GenerationInstallerPath -PathType Leaf)) {
+        Write-Warning '当前 DSH Desktop 未提供代际安装器，将回退到内置 CLI 安装。'
+        & $desktop.NodePath $desktop.DshPath plugin --profile $Profile add --save-exact $packageSpec
+        if ($LASTEXITCODE -ne 0) {
+            throw "DSH 插件安装失败（退出码：$LASTEXITCODE）。请保留上方 pnpm 输出以便排查。"
+        }
+    } else {
+        $helperUrl = "https://raw.githubusercontent.com/$Repository/$Ref/scripts/install-generation.mjs"
+        $temporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('dsh-harness-chat-control-generation-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $temporaryRoot | Out-Null
+        $helperPath = Join-Path $temporaryRoot 'install-generation.mjs'
+        try {
+            Invoke-WebRequest -UseBasicParsing -Uri $helperUrl -OutFile $helperPath
+            & $desktop.NodePath $helperPath --desktop-root $desktop.Root --profile $Profile --repository $Repository --ref $Ref
+            if ($LASTEXITCODE -ne 0) {
+                throw "DSH Desktop 代际安装失败（退出码：$LASTEXITCODE）。请保留上方安装输出以便排查。"
+            }
+        } finally {
+            if (Test-Path -LiteralPath $temporaryRoot) {
+                Remove-Item -LiteralPath $temporaryRoot -Recurse -Force
+            }
+        }
     }
 } finally {
     if ($null -ne $pnpmState) {

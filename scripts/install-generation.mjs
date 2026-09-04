@@ -1,0 +1,158 @@
+#!/usr/bin/env node
+/**
+ * Install this GitHub plugin through DSH Desktop's generation-aware boundary.
+ *
+ * DSH Desktop keeps community plugins in immutable generations.  The normal
+ * `dsh plugin add` command writes to the shared profile tree, which is still
+ * visible to the market but is not always discoverable by the packaged client
+ * module loader.  This small bridge uses the public generation installer that
+ * ships with DSH Desktop, then publishes the generation for the next launch.
+ */
+
+import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
+import { pathToFileURL } from 'node:url'
+import { join, resolve } from 'node:path'
+
+const PLUGIN_NAME = 'dsh-harness-chat-control'
+const DEFAULT_REPOSITORY = '1985899182/dsh-harness-chat-control'
+const DEFAULT_PROFILE = 'web'
+const DEFAULT_DESKTOP_ROOT = 'D:\\DSH\\DSH Desktop'
+
+function parseArgs(argv) {
+  const options = {
+    repository: DEFAULT_REPOSITORY,
+    profile: DEFAULT_PROFILE,
+    desktopRoot: process.env.DSH_DESKTOP_ROOT || DEFAULT_DESKTOP_ROOT,
+    ref: 'main',
+  }
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index]
+    if (!argument.startsWith('--')) throw new Error(`Unexpected argument: ${argument}`)
+    const key = argument.slice(2)
+    const value = argv[index + 1]
+    if (!value || value.startsWith('--')) throw new Error(`Missing value for --${key}`)
+    index += 1
+    if (key === 'repository') options.repository = value
+    else if (key === 'profile') options.profile = value
+    else if (key === 'desktop-root') options.desktopRoot = value
+    else if (key === 'ref') options.ref = value
+    else throw new Error(`Unknown option: --${key}`)
+  }
+  return options
+}
+
+function assertSafe(value, label, pattern) {
+  if (!pattern.test(value)) throw new Error(`${label} is not safe: ${value}`)
+}
+
+async function readJson(path) {
+  return JSON.parse(await readFile(path, 'utf8'))
+}
+
+const options = parseArgs(process.argv.slice(2))
+assertSafe(options.profile, 'profile', /^[A-Za-z0-9][A-Za-z0-9._-]*$/u)
+assertSafe(options.ref, 'ref', /^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._/-]*$/u)
+assertSafe(options.repository, 'repository', /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u)
+
+const desktopRoot = resolve(options.desktopRoot)
+const desktopModulePath = join(
+  desktopRoot,
+  'resources',
+  'app',
+  'node_modules',
+  'dsh-desktop-market-installer',
+  'index.js',
+)
+const nodePath = join(
+  desktopRoot,
+  'resources',
+  'app',
+  'node_modules',
+  'node',
+  'bin',
+  'node.exe',
+)
+if (!existsSync(desktopModulePath)) {
+  throw new Error(`DSH Desktop generation installer not found: ${desktopModulePath}`)
+}
+if (!existsSync(nodePath)) throw new Error(`DSH Desktop bundled Node not found: ${nodePath}`)
+
+const desktopModuleUrl = pathToFileURL(desktopModulePath).href
+const desktop = await import(desktopModuleUrl)
+const required = [
+  'exposeMissingGenerationLinks',
+  'installGeneration',
+  'listGenerations',
+  'publishGenerationManifest',
+  'readDesired',
+  'resolvePnpmEntry',
+  'withRegistryLock',
+  'writeDesired',
+]
+for (const name of required) {
+  if (typeof desktop[name] !== 'function') {
+    throw new Error(`This DSH Desktop build does not expose ${name}()`)
+  }
+}
+
+const appData = process.env.APPDATA
+if (!appData) throw new Error('APPDATA is not available; cannot locate DSH Desktop Harness home.')
+const dshHome = join(appData, 'dsh-desktop', 'harness')
+const pluginSpec = `github:${options.repository}#${options.ref}`
+const profileDir = join(dshHome, 'profiles', options.profile)
+const profileManifestPath = join(profileDir, 'package.json')
+
+console.log(`DSH Desktop: ${desktopRoot}`)
+console.log(`Harness home: ${dshHome}`)
+console.log(`Profile: ${options.profile}`)
+console.log(`Plugin source: ${pluginSpec}`)
+
+const result = await desktop.withRegistryLock(dshHome, async () => {
+  const install = await desktop.installGeneration({
+    dshHome,
+    profile: options.profile,
+    pluginSpec,
+    sourceSpec: pluginSpec,
+    expectedPluginName: PLUGIN_NAME,
+    nodeExecutablePath: nodePath,
+    pnpmEntryPath: desktop.resolvePnpmEntry(desktopModuleUrl),
+    environment: process.env,
+    onTrace: (line) => console.log(line),
+    onOutput: (chunk) => process.stdout.write(chunk),
+  })
+  if (!install.ok) throw new Error(install.detail || 'generation install failed')
+
+  const [desired, generations] = await Promise.all([
+    desktop.readDesired(dshHome),
+    desktop.listGenerations(dshHome),
+  ])
+  const byId = new Map(generations.map((generation) => [generation.id, generation]))
+  const kept = desired.filter((id) => byId.get(id)?.pluginName !== PLUGIN_NAME)
+  await desktop.writeDesired(dshHome, [...kept, install.generation.id])
+
+  // The app must be closed for an existing profile directory to be replaced.
+  // exposeMissingGenerationLinks only creates a missing link; the next cold
+  // start runs the full safe projection and atomically replaces old entries.
+  const exposed = await desktop.exposeMissingGenerationLinks(dshHome, options.profile)
+  const published = await desktop.publishGenerationManifest(dshHome, options.profile)
+  return { install, exposed, published }
+})
+
+const manifest = await readJson(profileManifestPath)
+const dependencies = manifest.dependencies && typeof manifest.dependencies === 'object'
+  ? manifest.dependencies
+  : {}
+const bundles = manifest.dsh?.profile?.bundles ?? []
+if (typeof dependencies[PLUGIN_NAME] !== 'string') {
+  throw new Error(`Generation published, but ${PLUGIN_NAME} is missing from ${profileManifestPath}`)
+}
+if (!bundles.includes(PLUGIN_NAME)) {
+  throw new Error(`Generation published, but ${PLUGIN_NAME} is missing from dsh.profile.bundles`)
+}
+
+console.log(`Generation installed: ${result.install.generation.id}`)
+if (result.exposed.length > 0) console.log(`Available for validation: ${result.exposed.join(', ')}`)
+console.log(`Staged for next restart: ${result.published.plugins.join(', ')}`)
+console.log(`Bundles: ${JSON.stringify(result.published.bundles)}`)
+console.log(`Installed and registered: ${PLUGIN_NAME}@${dependencies[PLUGIN_NAME]}`)

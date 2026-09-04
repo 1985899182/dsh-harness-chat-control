@@ -10,6 +10,7 @@ const required = [
   'lib/index.js',
   'lib/client.js',
   'scripts/install.ps1',
+  'scripts/install-generation.mjs',
   'README.md',
   'LICENSE'
 ]
@@ -68,6 +69,7 @@ if (process.platform === 'win32') {
 for (const relative of ['lib/index.js', 'lib/client.js']) {
   execFileSync(process.execPath, ['--check', resolve(root, relative)], { stdio: 'inherit' })
 }
+execFileSync(process.execPath, ['--check', resolve(root, 'scripts/install-generation.mjs')], { stdio: 'inherit' })
 
 let registeredModule
 const registrations = []
