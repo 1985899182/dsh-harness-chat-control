@@ -1,7 +1,7 @@
 {
   "name": "dsh-harness-chat-control",
-  "version": "0.2.14",
-  "description": "ChatGPT-style stop, revise, selection-toolbar quote, and side-question controls for DeepSeek Harness Desktop UI.",
+  "version": "0.2.15",
+  "description": "ChatGPT-style stop, revise, native annotation-chip quote, and Better Sidebar sidechat controls for DeepSeek Harness Desktop UI.",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
@@ -34,7 +34,8 @@
         "@deepseek-ai/dsh-client-ui-chat",
         "@deepseek-ai/dsh-client-ui-layout",
         "@deepseek-ai/dsh-client-ui-sidebar",
-        "@deepseek-ai/dsh-client-ui-conversation"
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-input-trigger"
       ]
     }
   },
@@ -43,6 +44,7 @@
     "@deepseek-ai/dsh-api-session-controller": "^0.1.2-alpha.1",
     "@deepseek-ai/dsh-client-ui-chat": "^0.1.2-alpha.1",
     "@deepseek-ai/dsh-client-ui-conversation": "^0.1.2-alpha.1",
+    "@deepseek-ai/dsh-client-ui-input-trigger": "^0.1.2-alpha.1",
     "@deepseek-ai/dsh-client-ui-layout": "^0.1.2-alpha.1",
     "@deepseek-ai/dsh-client-ui-sidebar": "^0.1.2-alpha.1",
     "@deepseek-ai/dsh-client-ui-session": "^0.1.2-alpha.1",
