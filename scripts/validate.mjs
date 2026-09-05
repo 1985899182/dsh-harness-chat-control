@@ -22,7 +22,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.24') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.25') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -55,7 +55,7 @@ const installer = readFileSync(installerPath, 'utf8')
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "github:$Repository#$Ref"')) {
   throw new Error('Installer must use the canonical GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.24'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.25'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!installer.includes('dsh.profile.bundles')) {
@@ -108,11 +108,15 @@ const registrations = []
 const injectedSlots = []
 const insertedReferences = []
 const registeredSources = []
+const forkCalls = []
+const childPrompts = []
+const openedSessions = []
 const fakeReact = {
   Fragment: Symbol('Fragment'),
   createElement: (...args) => ({ args }),
   useState: (initial) => [initial, () => {}],
-  useEffect: () => {},
+  useRef: (initial) => ({ current: initial }),
+  useEffect: (effect) => { effect?.() },
   useSyncExternalStore: (_subscribe, getSnapshot) => getSnapshot()
 }
 
@@ -157,8 +161,11 @@ if (!hostSource.includes("const MODEL_ROUTE = '/dsh-harness-chat-control/sidecha
   || !hostSource.includes('trustedRequest')) {
   throw new Error('Host sidechat model route validation/selection seam is missing')
 }
-if (!clientSource.includes('dshhc-message-edit') || !clientSource.includes('编辑并重新发送')) {
-  throw new Error('ChatGPT-style user message edit affordance is missing')
+for (const phrase of ['dshhc-message-edit', '编辑消息', 'data-composer-input', 'target.submit', 'inputActions', 'keyboard', 'replaceSession', 'sessions.fork']) {
+  if (!clientSource.includes(phrase)) throw new Error(`Native composer edit seam is missing: ${phrase}`)
+}
+for (const phrase of ['dshhc-revision-card', '上一条提问', 'dshhc-revision-editor']) {
+  if (clientSource.includes(phrase)) throw new Error(`The obsolete standalone revision UI remains: ${phrase}`)
 }
 for (const label of ['添加到对话', '更多详情', '在侧边聊天中提问']) {
   if (!clientSource.includes(label)) throw new Error(`Selection toolbar label is missing: ${label}`)
@@ -218,10 +225,33 @@ const fakeInputTriggers = {
   })
 }
 
+const fakeSessionsById = new Map()
+const sourceSession = {
+  sessionId: 'desktop-session-1',
+  getSnapshot: () => ({ running: false })
+}
+fakeSessionsById.set('desktop-session-1', { session: sourceSession })
+
 clientPlugin.apply({
   slots: fakeSlots,
   sessions: {
-    binding: () => undefined,
+    binding: (id) => fakeSessionsById.get(String(id)),
+    fork: async ({ atSeq }) => {
+      forkCalls.push(atSeq)
+      const child = {
+        sessionId: 'desktop-session-2',
+        getSnapshot: () => ({ running: false }),
+        prompt: async (content) => {
+          childPrompts.push(content)
+          return { ok: true }
+        }
+      }
+      fakeSessionsById.set('desktop-session-2', { session: child })
+      return 'desktop-session-2'
+    },
+    create: async () => 'desktop-session-2',
+    open: (id) => openedSessions.push(String(id)),
+    list: { getSnapshot: () => ({ byId: { 'desktop-session-1': { cwd: 'D:/Study' } } }) },
     scope: () => fakeSessionContext
   },
   effect(callback) {
@@ -250,9 +280,18 @@ if (!registrations.every(({ config }) => typeof config.id === 'string' && typeof
 
 const desktopChatSnapshot = {
   nodes: new Map([
+    ['previous-tail', {
+      key: 'previous-tail',
+      kind: 'turn-tail',
+      anchorSeq: 42,
+      location: { kind: 'turn', turn: { turn: 1, end: { seq: 42 } } },
+      data: { closing: { finalNode: { seq: 42 }, blocks: [] } }
+    }],
     ['prompt', {
+      key: 'prompt',
       kind: 'user',
-      anchorSeq: 41,
+      anchorSeq: 50,
+      location: { kind: 'turn', turn: { turn: 2 } },
       data: { content: [{ type: 'text', text: '请把答案改短一些' }] }
     }],
     ['answer', {
@@ -331,19 +370,48 @@ const tailQuoteView = quoteRegistration.component({
 })
 if (tailQuoteView === null) throw new Error('Assistant action cannot read the current TurnTail snapshot')
 
-const revisionView = revisionRegistration.component({
-  useChat: (select) => select(desktopChatSnapshot),
-  useSession: (select) => select({ running: false }),
-  replay: async () => {},
-  stop: async () => {}
+let nativeDraft = ''
+const nativeInputActions = {
+  setDraft: (text) => { nativeDraft = text },
+  submit: () => {}
+}
+const revisionProps = revisionRegistration.config.inject('desktop-session-1')
+revisionProps.revisionStore.request({
+  sessionId: 'desktop-session-1',
+  key: 'prompt',
+  text: '请把答案改短一些'
 })
-if (revisionView === null) throw new Error('Revision dock cannot read the DSH Desktop chat snapshot')
+const revisionView = revisionRegistration.component({
+  ...revisionProps,
+  useChat: (select) => select(desktopChatSnapshot),
+  useInput: (select) => select({ draft: nativeDraft }),
+  inputActions: nativeInputActions
+})
+if (revisionView !== null) throw new Error('Revision dock must not render a standalone edit card')
+if (nativeDraft !== '请把答案改短一些') throw new Error('Edit request did not seed the native composer draft')
+nativeDraft = '修改后的消息'
+revisionRegistration.component({
+  ...revisionProps,
+  useChat: (select) => select(desktopChatSnapshot),
+  useInput: (select) => select({ draft: nativeDraft }),
+  inputActions: nativeInputActions
+})
+nativeInputActions.submit()
+await new Promise((resolve) => setTimeout(resolve, 0))
+if (forkCalls[0] !== 42) throw new Error(`Revision fork was not cut at the previous turn end: ${JSON.stringify(forkCalls)}`)
+if (childPrompts[0]?.[0]?.text !== '修改后的消息') throw new Error('Edited draft was not sent to the replacement session')
+if (openedSessions.at(-1) !== 'desktop-session-2') throw new Error('Replacement session was not opened after send')
+if (revisionProps.revisionStore.getSnapshot().pending !== null) throw new Error('Revision state was not cleared after replacement send')
 
 const shellProps = shellRegistration.config.inject()
 const selectionStore = shellProps.selectionStore
-if (shellProps.revisionStore?.getSnapshot?.().revision !== 0) throw new Error('Revision request store did not start at revision zero')
-shellProps.revisionStore.request()
-if (shellProps.revisionStore.getSnapshot().revision !== 1) throw new Error('ChatGPT-style edit request did not publish a revision')
+const shellRevisionBeforeRequest = shellProps.revisionStore?.getSnapshot?.().revision
+if (shellProps.revisionStore.request({ sessionId: 'desktop-session-1', key: 'prompt', text: '待修改消息' }) === null) {
+  throw new Error('ChatGPT-style edit request was rejected')
+}
+if (shellProps.revisionStore.getSnapshot().revision !== shellRevisionBeforeRequest + 1 || shellProps.revisionStore.getSnapshot().pending?.text !== '待修改消息') {
+  throw new Error('ChatGPT-style edit request did not publish a pending native-composer edit')
+}
 const referenceCalls = []
 selectionStore.show({
   text: '选中的回答片段',

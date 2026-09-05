@@ -4,7 +4,7 @@
 
 ## 功能
 
-- **停止并编辑重发**：最近一条用户消息操作条提供与 ChatGPT 一致的铅笔按钮；点击后打开可编辑文本框。生成中会先调用 DSH 的取消接口；修改后重新发送时，仍在运行则采用 `steer`（打断当前轮次），空闲时采用 `queue`（开启下一轮）。原消息仍保留在追加式日志中。
+- **停止并编辑重发**：每条用户/steering 消息的原生操作行旁提供与 ChatGPT 一致的铅笔按钮；点击后把原文字直接放入 DSH 原生 composer，用户可在同一个输入框中修改。点击原生发送按钮或按 Enter 后，插件按 DSH 的 fork 语义创建“修改后的替换分支”并自动切换过去，不会在原会话末尾追加一条看似普通的新消息。
 - **回答引用**：每个已完成 AI 回答的操作条新增“引用”和“侧栏问”。先选中文字可只引用选区；未选中时引用整条回答。
 - **选中文字浮动工具条**：在用户或 AI 消息中选中文字后，选区上方显示“添加到对话 / 更多详情 / 在侧边聊天中提问”三段式圆角工具条；滚动或窗口尺寸变化时会自动跟随选区。
 - **原生注释芯片**：“引用”和“添加到对话”会在 DSH 原生 composer 中插入一个不可拆分的 `1 条注释` 芯片，不把摘录直接粘贴成普通文字，也不会自动发送。芯片保留引用身份，发送时才由本插件序列化为带边界的上下文。
@@ -16,7 +16,7 @@
 
 ## 重要语义
 
-DSH 的会话日志是追加式的，因此“编辑重发”不会删除历史消息。它会把修订后的文本作为新的 `steer` 或 `queue` 消息提交；这既保留审计轨迹，也能在生成中立即转向修订后的问题。
+DSH 的会话日志是追加式的，因此“编辑重发”不会物理删除原分支。插件会在被编辑消息之前的最近一个已完成 turn 结束处调用 `sessions.fork`，把修改后的文本发送到新分支并切换当前会话；原分支仍可从会话列表中查看，审计轨迹不会丢失。若编辑的是首条消息（没有可分叉的前置 turn），则在同一工作区创建一个新会话承载修改后的对话。
 
 引用输出时，插件会在芯片的发送序列化结果和 sidechat 首条消息中明确把引用内容标为“上下文”，避免其中的文本意外覆盖你的追问。侧边引用只在发送时序列化；打开引用后输入框只显示胶囊，用户可先自行输入问题、编辑问题或移除胶囊。侧边对话使用 Better Sidebar 的独立 child session，不会再出现插件自绘的第二个追问面板；模型下拉只影响当前侧边 child 的后续请求。
 
@@ -31,8 +31,8 @@ DSH 的会话日志是追加式的，因此“编辑重发”不会删除历史�
 DSH Desktop 可以保持打开。在 PowerShell 中执行下面的命令（当前稳定版本）：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.24/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.24'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.25/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.25'
 ```
 
 脚本会自动定位常见的 DSH Desktop 安装目录（包括 `D:\DSH\DSH Desktop` 与 `%LOCALAPPDATA%\Programs\DSH Desktop`），设置正确的 Desktop Harness home，并使用桌面版自带的 generation installer 将 GitHub 插件放入独立代际；这一步比直接写入共享 `node_modules` 更可靠，也能保证 Web Client 在冷启动时发现插件。旧版本留下的共享安装会先被安全移除。
@@ -48,25 +48,25 @@ $script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-co
 如需强制只安装并暂存、不尝试当前进程的热挂载，可加 `-SkipLiveMount`：
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.24' -SkipLiveMount
+& ([scriptblock]::Create($script)) -Ref 'v0.2.25' -SkipLiveMount
 ```
 
 如果日志轮换导致自动发现不到当前页面，可显式传入 DSH 页面地址（必须是本机地址，保留地址栏中的 `token`）：
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.24' -WebUrl 'http://127.0.0.1:65102/?token=你的当前token'
+& ([scriptblock]::Create($script)) -Ref 'v0.2.25' -WebUrl 'http://127.0.0.1:65102/?token=你的当前token'
 ```
 
 如安装目录不在自动探测范围内，或想先只查看将要执行的操作：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.24/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'v0.2.24' -DryRun
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.25/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'v0.2.25' -DryRun
 ```
 
 `-Ref` 可以换成已发布的 Git tag 或提交 SHA，以固定安装版本。通过 `main` 安装时，更新只需在完全退出 DSH Desktop 后重新执行一键命令；若使用 `main`，脚本地址也相应改为 `.../main/scripts/install.ps1`。
 
-为兼容 DSH Desktop 0.7.2 的 GitHub 更新检测，发布版本请使用**轻量 tag**（例如 `git tag v0.2.24`），不要使用带注释的 `git tag -a`。该 Desktop 版本直接比较 `refs/tags/*` 返回值；带注释的 tag 返回 tag object，而不是实际提交，会造成“更新后版本没有变化”的误报。
+为兼容 DSH Desktop 0.7.2 的 GitHub 更新检测，发布版本请使用**轻量 tag**（例如 `git tag v0.2.25`），不要使用带注释的 `git tag -a`。该 Desktop 版本直接比较 `refs/tags/*` 返回值；带注释的 tag 返回 tag object，而不是实际提交，会造成“更新后版本没有变化”的误报。
 
 ### 从本地源码安装
 
@@ -112,4 +112,4 @@ npm test
 
 原生引用芯片依赖同一版本的 `@deepseek-ai/dsh-client-ui-input-trigger`，并通过 `conversation.input` 的 `slash/input-insert-reference` 事件接入 DSH composer。侧边对话依赖已安装并启用的 `dsh-better-sidebar@0.17.1`，使用其 `targetedOpen`、`stateSubscription` 和 `sidechat.*` API；该版本没有公开侧边 composer 草稿接口，因此插件只在侧边原生 composer 外层加一枚兼容胶囊和模型下拉，并在用户发送时接管引用序列化。模型下拉读取 `remote.session.modelCatalog()`，通过插件自己的同源受信路由调用 `llm.resolveCallConfig` 与 Session Agent 的下一请求选择接口。未启用 Better Sidebar 时，引用芯片仍可使用，但侧边对话入口会提示缺少该插件。
 
-桌面端的 Chat snapshot 通过 `useChat` 提供；用户消息从 `node.data.content` 读取；助手回答同时兼容 `assistant-step.data.blocks` 和当前 `turn-tail.data.closing.blocks`（`closing.finalNode` 只用于匹配 `messageId`）。若 DSH Desktop 升级并更改这些 Web Client Slots 或 snapshot contract，请先使用其内置 CLI 导出 profile 配置，并依据新版 Slot contract 调整注册点。
+桌面端的 Chat snapshot 通过 `useChat` 提供；用户消息从 `node.data.content` 读取，操作行通过 DOM 中的 `data-chat-flow-key` 与原生 `.npc0Lq_actions` 定位；助手回答同时兼容 `assistant-step.data.blocks` 和当前 `turn-tail.data.closing.blocks`（`closing.finalNode` 只用于匹配 `messageId`）。编辑桥接同时接管原生 `inputActions.submit` 与键盘 `keyboard.submit`，因此点击发送和 Enter 都会走同一条替换分支路径。若 DSH Desktop 升级并更改这些 Web Client Slots 或 snapshot contract，请先使用其内置 CLI 导出 profile 配置，并依据新版 Slot contract 调整注册点。
