@@ -22,7 +22,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.45') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.46') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -56,7 +56,7 @@ const installer = readFileSync(installerPath, 'utf8')
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "github:$Repository#$Ref"')) {
   throw new Error('Installer must use the canonical GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.45'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.46'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!installer.includes('dsh.profile.bundles')) {
@@ -191,6 +191,12 @@ if (clientSource.includes('sideChatModels.start()')) throw new Error('The obsole
 if (clientSource.includes('stopImmediatePropagation')) throw new Error('Sidechat interception must not freeze the host event loop')
 if (!clientSource.includes('return [serializeReferenceText(cleanReference), cleanQuestion]')) {
   throw new Error('Sidechat quote must not manufacture a visible question')
+}
+if (clientSource.includes('function quoteLines') || clientSource.includes(".map((line) => `> ${line}`")) {
+  throw new Error('Quote serialization must not manufacture Markdown blockquotes')
+}
+for (const phrase of ['REFERENCE_CONTEXT_HEADER', 'REFERENCE_CONTEXT_START', 'REFERENCE_CONTEXT_END', '【引用开始】', '【引用结束】']) {
+  if (!clientSource.includes(phrase)) throw new Error(`Plain-text quote boundary is missing: ${phrase}`)
 }
 if (!hostSource.includes("const MODEL_ROUTE = '/dsh-harness-chat-control/sidechat-model'")
   || !hostSource.includes('selectForNextRequest')
@@ -407,6 +413,12 @@ if (reference?.source !== 'dsh-harness-chat-control'
 }
 const serialized = await registeredSources[0].codec.serialize(reference.ref)
 if (!serialized.includes('这是 DSH Desktop 的回答。')) throw new Error('Reference serializer lost the selected answer')
+if (serialized.includes('\n---\n') || /(?:^|\n)>\s/u.test(serialized)) {
+  throw new Error('Reference serializer must not add Markdown separators or blockquotes')
+}
+if (!serialized.includes('【引用开始】') || !serialized.includes('【引用结束】')) {
+  throw new Error('Reference serializer must keep plain-text context boundaries')
+}
 if (registeredSources[0].codec.clipboardText(reference.ref) !== '@[1 条注释](dsh-chat-control:' + JSON.parse(reference.ref).id + ')') {
   throw new Error('Reference clipboard projection is not stable')
 }
