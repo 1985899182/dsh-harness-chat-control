@@ -4,7 +4,7 @@ param(
     [string]$Profile = 'web',
 
     [ValidatePattern('^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._/-]*$')]
-    [string]$Ref = 'v0.2.40',
+    [string]$Ref = 'v0.2.41',
 
     [string]$DesktopRoot,
 

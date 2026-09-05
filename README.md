@@ -32,8 +32,8 @@ DSH 的会话日志是追加式的，因此“编辑重发”不会物理删除�
 DSH Desktop 可以保持打开。在 PowerShell 中执行下面的命令（当前稳定版本）：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.40/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.40'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.41/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.41'
 ```
 
 脚本会自动定位常见的 DSH Desktop 安装目录（包括 `D:\DSH\DSH Desktop` 与 `%LOCALAPPDATA%\Programs\DSH Desktop`），设置正确的 Desktop Harness home，并使用桌面版自带的 generation installer 将 GitHub 插件放入独立代际；这一步比直接写入共享 `node_modules` 更可靠，也能保证 Web Client 在冷启动时发现插件。旧版本留下的共享安装会先被安全移除。
@@ -49,25 +49,25 @@ $script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-co
 如需强制只安装并暂存、不尝试当前进程的热挂载，可加 `-SkipLiveMount`：
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.40' -SkipLiveMount
+& ([scriptblock]::Create($script)) -Ref 'v0.2.41' -SkipLiveMount
 ```
 
 如果日志轮换导致自动发现不到当前页面，可显式传入 DSH 页面地址（必须是本机地址，保留地址栏中的 `token`）：
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.40' -WebUrl 'http://127.0.0.1:65102/?token=你的当前token'
+& ([scriptblock]::Create($script)) -Ref 'v0.2.41' -WebUrl 'http://127.0.0.1:65102/?token=你的当前token'
 ```
 
 如安装目录不在自动探测范围内，或想先只查看将要执行的操作：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.40/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'v0.2.40' -DryRun
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.41/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'v0.2.41' -DryRun
 ```
 
 `-Ref` 可以换成已发布的 Git tag 或提交 SHA，以固定安装版本。通过 `main` 安装时，更新只需在完全退出 DSH Desktop 后重新执行一键命令；若使用 `main`，脚本地址也相应改为 `.../main/scripts/install.ps1`。
 
-为兼容 DSH Desktop 0.7.2 的 GitHub 更新检测，发布版本请使用**轻量 tag**（例如 `git tag v0.2.40`），不要使用带注释的 `git tag -a`。该 Desktop 版本直接比较 `refs/tags/*` 返回值；带注释的 tag 返回 tag object，而不是实际提交，会造成“更新后版本没有变化”的误报。
+为兼容 DSH Desktop 0.7.2 的 GitHub 更新检测，发布版本请使用**轻量 tag**（例如 `git tag v0.2.41`），不要使用带注释的 `git tag -a`。该 Desktop 版本直接比较 `refs/tags/*` 返回值；带注释的 tag 返回 tag object，而不是实际提交，会造成“更新后版本没有变化”的误报。
 
 ### 从本地源码安装
 
