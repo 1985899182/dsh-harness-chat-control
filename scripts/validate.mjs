@@ -22,7 +22,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.25') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.26') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -55,7 +55,7 @@ const installer = readFileSync(installerPath, 'utf8')
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "github:$Repository#$Ref"')) {
   throw new Error('Installer must use the canonical GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.25'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.26'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!installer.includes('dsh.profile.bundles')) {
@@ -146,6 +146,14 @@ if (!clientSource.includes("!classes.includes('sidechatComposerInput')")) {
 }
 if (!clientSource.includes('queueObserverFlush') || !clientSource.includes('label.textContent !== preview')) {
   throw new Error('Sidechat reference bridge must coalesce mutations and update chip text idempotently')
+}
+if (!clientSource.includes("const chip = doc.createElement('div')")
+  || !clientSource.includes('chip.append(remove)')
+  || clientSource.includes('row.append(chip, remove)')) {
+  throw new Error('Sidechat reference remove control must stay inside the same capsule')
+}
+if (!clientSource.includes('[class*="sidechatComposer"][data-dsh-harness-model] [class*="sidechatComposerMeta"]')) {
+  throw new Error('Native sidechat model badge must be hidden when the plugin selector is mounted')
 }
 if (!clientSource.includes("const SIDECHAT_MODEL_ROUTE = '/dsh-harness-chat-control/sidechat-model'")) {
   throw new Error('Sidechat model selector route is missing')

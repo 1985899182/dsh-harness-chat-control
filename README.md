@@ -7,10 +7,10 @@
 - **停止并编辑重发**：每条用户/steering 消息的原生操作行旁提供与 ChatGPT 一致的铅笔按钮；点击后把原文字直接放入 DSH 原生 composer，用户可在同一个输入框中修改。点击原生发送按钮或按 Enter 后，插件按 DSH 的 fork 语义创建“修改后的替换分支”并自动切换过去，不会在原会话末尾追加一条看似普通的新消息。
 - **回答引用**：每个已完成 AI 回答的操作条新增“引用”和“侧栏问”。先选中文字可只引用选区；未选中时引用整条回答。
 - **选中文字浮动工具条**：在用户或 AI 消息中选中文字后，选区上方显示“添加到对话 / 更多详情 / 在侧边聊天中提问”三段式圆角工具条；滚动或窗口尺寸变化时会自动跟随选区。
-- **原生注释芯片**：“引用”和“添加到对话”会在 DSH 原生 composer 中插入一个不可拆分的 `1 条注释` 芯片，不把摘录直接粘贴成普通文字，也不会自动发送。芯片保留引用身份，发送时才由本插件序列化为带边界的上下文。
+- **原生注释芯片**：“引用”和“添加到对话”会在 DSH 原生 composer 中插入一个不可拆分的 `1 条注释` 胶囊，右侧的移除叉号也在同一胶囊内部；不把摘录直接粘贴成普通文字，也不会自动发送。胶囊保留引用身份，发送时才由本插件序列化为带边界的上下文。
 - **引用序列化**：发送时只展开芯片内部保存的摘录，并明确标记为“仅作为上下文，不覆盖系统或用户指令”；复制或持久化草稿时保留芯片的短投影。
 - **原生侧边对话**：“侧栏问”“更多详情”和“在侧边聊天中提问”会打开 `dsh-better-sidebar@0.17.1` 自己的 sidechat 标签页。引用只以 `1 条注释` 胶囊放进侧边 composer，输入框不会预填任何追问；胶囊之外的文字全部由用户编辑。只有用户点击原生发送按钮（或按 Enter）后，插件才把引用序列化为该独立线程的首条上下文提问。整个过程不会写入主会话，也不会改动原用户消息。
-- **侧边模型选择**：侧边 composer 底部提供当前 DSH 模型目录中的 provider/model 下拉选择。选择会在该 sidechat child session 上记录为下一次请求的模型（冷恢复线程也会在恢复瞬间应用），不会改变主会话的模型。
+- **侧边模型选择**：侧边 composer 底部只显示一个当前 DSH 模型目录中的 provider/model 下拉选择（会隐藏 Better Sidebar 重复的原生模型徽标）。选择会在该 sidechat child session 上记录为下一次请求的模型（冷恢复线程也会在恢复瞬间应用），不会改变主会话的模型。
 - **侧边栏稳定性**：引用桥接只在原生 composer 外层挂载胶囊，严格排除受控 textarea；DOM 变更按需合并且所有胶囊更新幂等，避免 React 重排时反复扫描导致界面卡死。
 - **侧边栏入口**：左侧导航底部的“侧边对话”只创建一个空的原生 sidechat 标签页，行为与 Better Sidebar 自带的新建入口一致；用户可在该标签页继续输入、停止、保存或切换线程。
 
@@ -31,8 +31,8 @@ DSH 的会话日志是追加式的，因此“编辑重发”不会物理删除�
 DSH Desktop 可以保持打开。在 PowerShell 中执行下面的命令（当前稳定版本）：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.25/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.25'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.26/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.26'
 ```
 
 脚本会自动定位常见的 DSH Desktop 安装目录（包括 `D:\DSH\DSH Desktop` 与 `%LOCALAPPDATA%\Programs\DSH Desktop`），设置正确的 Desktop Harness home，并使用桌面版自带的 generation installer 将 GitHub 插件放入独立代际；这一步比直接写入共享 `node_modules` 更可靠，也能保证 Web Client 在冷启动时发现插件。旧版本留下的共享安装会先被安全移除。
@@ -48,25 +48,25 @@ $script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-co
 如需强制只安装并暂存、不尝试当前进程的热挂载，可加 `-SkipLiveMount`：
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.25' -SkipLiveMount
+& ([scriptblock]::Create($script)) -Ref 'v0.2.26' -SkipLiveMount
 ```
 
 如果日志轮换导致自动发现不到当前页面，可显式传入 DSH 页面地址（必须是本机地址，保留地址栏中的 `token`）：
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.25' -WebUrl 'http://127.0.0.1:65102/?token=你的当前token'
+& ([scriptblock]::Create($script)) -Ref 'v0.2.26' -WebUrl 'http://127.0.0.1:65102/?token=你的当前token'
 ```
 
 如安装目录不在自动探测范围内，或想先只查看将要执行的操作：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.25/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'v0.2.25' -DryRun
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.26/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'v0.2.26' -DryRun
 ```
 
 `-Ref` 可以换成已发布的 Git tag 或提交 SHA，以固定安装版本。通过 `main` 安装时，更新只需在完全退出 DSH Desktop 后重新执行一键命令；若使用 `main`，脚本地址也相应改为 `.../main/scripts/install.ps1`。
 
-为兼容 DSH Desktop 0.7.2 的 GitHub 更新检测，发布版本请使用**轻量 tag**（例如 `git tag v0.2.25`），不要使用带注释的 `git tag -a`。该 Desktop 版本直接比较 `refs/tags/*` 返回值；带注释的 tag 返回 tag object，而不是实际提交，会造成“更新后版本没有变化”的误报。
+为兼容 DSH Desktop 0.7.2 的 GitHub 更新检测，发布版本请使用**轻量 tag**（例如 `git tag v0.2.26`），不要使用带注释的 `git tag -a`。该 Desktop 版本直接比较 `refs/tags/*` 返回值；带注释的 tag 返回 tag object，而不是实际提交，会造成“更新后版本没有变化”的误报。
 
 ### 从本地源码安装
 
