@@ -22,7 +22,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.21') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.22') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -55,14 +55,17 @@ const installer = readFileSync(installerPath, 'utf8')
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "github:$Repository#$Ref"')) {
   throw new Error('Installer must use the canonical GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.21'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.22'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!installer.includes('dsh.profile.bundles')) {
   throw new Error('Installer must verify DSH bundle registration')
 }
-if (!readFileSync(resolve(root, 'cordis.patch.yml'), 'utf8').includes('inject: [clientModules]')) {
+if (!readFileSync(resolve(root, 'cordis.patch.yml'), 'utf8').includes('inject: [clientModules, webServer, webRuntime]')) {
   throw new Error('Host patch must wait for the clientModules service before mounting')
+}
+if (!readFileSync(resolve(root, 'cordis.patch.yml'), 'utf8').includes('webServer, webRuntime')) {
+  throw new Error('Host patch must inject the web route services for sidechat model selection')
 }
 if (!readFileSync(resolve(root, 'README.md'), 'utf8').includes('scripts/install.ps1')) {
   throw new Error('README must document the one-command installer')
@@ -120,11 +123,26 @@ const browserSandbox = {
 }
 
 const clientSource = readFileSync(resolve(root, 'lib/client.js'), 'utf8')
+const hostSource = readFileSync(resolve(root, 'lib/index.js'), 'utf8')
 if (!clientSource.includes("!classes.includes('sidechatComposerInput')")) {
   throw new Error('Sidechat composer selector must not treat the controlled textarea as its parent')
 }
 if (!clientSource.includes('queueObserverFlush') || !clientSource.includes('label.textContent !== preview')) {
   throw new Error('Sidechat reference bridge must coalesce mutations and update chip text idempotently')
+}
+if (!clientSource.includes("const SIDECHAT_MODEL_ROUTE = '/dsh-harness-chat-control/sidechat-model'")) {
+  throw new Error('Sidechat model selector route is missing')
+}
+if (!clientSource.includes('modelCatalog()') || !clientSource.includes('dshhc-sidechat-model-select')) {
+  throw new Error('Sidechat model catalog selector is missing')
+}
+if (!clientSource.includes('return [serializeReferenceText(cleanReference), cleanQuestion]')) {
+  throw new Error('Sidechat quote must not manufacture a visible question')
+}
+if (!hostSource.includes("const MODEL_ROUTE = '/dsh-harness-chat-control/sidechat-model'")
+  || !hostSource.includes('selectForNextRequest')
+  || !hostSource.includes('trustedRequest')) {
+  throw new Error('Host sidechat model route validation/selection seam is missing')
 }
 if (!clientSource.includes('dshhc-message-edit') || !clientSource.includes('编辑并重新发送')) {
   throw new Error('ChatGPT-style user message edit affordance is missing')
@@ -350,8 +368,8 @@ selectionStore.show({
 const detailView = selectionChild.args[0](selectionChild.args[1])
 const detailButtons = detailView.args[2].args.slice(2)
 detailButtons[1].args[1].onClick({})
-if (sideCalls.at(-1)?.[0] !== 'desktop-session-1' || sideCalls.at(-1)?.[1] !== '需要解释的片段' || !sideCalls.at(-1)?.[2].includes('详细解释')) {
-  throw new Error('The details action did not open native sidechat with contextual prompt')
+if (sideCalls.at(-1)?.[0] !== 'desktop-session-1' || sideCalls.at(-1)?.[1] !== '需要解释的片段' || sideCalls.at(-1)?.[2] !== '') {
+  throw new Error('The details action did not open native sidechat with an empty editable question')
 }
 
 selectionStore.show({
@@ -363,8 +381,8 @@ selectionStore.show({
 const sideView = selectionChild.args[0](selectionChild.args[1])
 const sideButtons = sideView.args[2].args.slice(2)
 sideButtons[2].args[1].onClick({})
-if (sideCalls.at(-1)?.[0] !== 'desktop-session-1' || sideCalls.at(-1)?.[1] !== '需要带入侧边聊天的片段' || !sideCalls.at(-1)?.[2].includes('最重要的结论')) {
-  throw new Error('The side-chat action did not carry the selected text to native sidechat')
+if (sideCalls.at(-1)?.[0] !== 'desktop-session-1' || sideCalls.at(-1)?.[1] !== '需要带入侧边聊天的片段' || sideCalls.at(-1)?.[2] !== '') {
+  throw new Error('The side-chat action did not carry the selected text with an empty editable question')
 }
 
 console.log('dsh-harness-chat-control: static and loader validation passed')
