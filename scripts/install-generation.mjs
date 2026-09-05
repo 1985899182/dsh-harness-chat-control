@@ -24,7 +24,7 @@ function parseArgs(argv) {
     repository: DEFAULT_REPOSITORY,
     profile: DEFAULT_PROFILE,
     desktopRoot: process.env.DSH_DESKTOP_ROOT || DEFAULT_DESKTOP_ROOT,
-    ref: 'v0.2.39',
+    ref: 'v0.2.40',
     sourceDirectory: undefined,
     syncLiveClient: false,
     previousPackageDirectory: undefined,

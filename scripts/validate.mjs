@@ -22,7 +22,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.39') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.40') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -55,7 +55,7 @@ const installer = readFileSync(installerPath, 'utf8')
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "github:$Repository#$Ref"')) {
   throw new Error('Installer must use the canonical GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.39'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.40'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!installer.includes('dsh.profile.bundles')) {
@@ -170,6 +170,9 @@ if (!clientSource.includes("const SIDECHAT_HISTORY_ROUTE = '/dsh-harness-chat-co
 }
 if (!clientSource.includes('modelCatalog()') || !clientSource.includes('_2WBGbq_trigger')) {
   throw new Error('Sidechat model catalog selector is missing')
+}
+if (!clientSource.includes('overlaySnapshot') || !clientSource.includes('useSyncExternalStore')) {
+  throw new Error('Sidechat model directory must cache its overlay snapshot for React stability')
 }
 for (const phrase of ['dshhc-sidechat-composer-controls', 'JyqXLa_card', 'JyqXLa_row', 'JyqXLa_tools', 'JyqXLa_modes', 'JyqXLa_trailing', 'JyqXLa_add', 'Q58mYq_trigger', '_2WBGbq_trigger', '_2WBGbq_menu', 'refreshSidechatAfterSend', 'refreshSidechatView', 'updateTab', 'Promise.allSettled']) {
   if (!clientSource.includes(phrase)) throw new Error(`Native sidechat composer control is missing: ${phrase}`)
