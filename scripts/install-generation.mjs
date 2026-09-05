@@ -24,7 +24,7 @@ function parseArgs(argv) {
     repository: DEFAULT_REPOSITORY,
     profile: DEFAULT_PROFILE,
     desktopRoot: process.env.DSH_DESKTOP_ROOT || DEFAULT_DESKTOP_ROOT,
-    ref: 'v0.2.23',
+    ref: 'v0.2.24',
     sourceDirectory: undefined,
   }
   for (let index = 0; index < argv.length; index += 1) {
@@ -204,7 +204,8 @@ if (!bundles.includes(PLUGIN_NAME)) {
 
 console.log(`Generation installed: ${result.install.generation.id}`)
 if (result.exposed.length > 0) console.log(`Available for validation: ${result.exposed.join(', ')}`)
-console.log(`Staged for next restart: ${result.published.plugins.join(', ')}`)
+console.log(`Generation staged for next restart: ${result.published.plugins.join(', ')}`)
 console.log(`Projected profile layers: ${result.projected.linked.join(', ')}`)
 console.log(`Bundles: ${JSON.stringify(result.published.bundles)}`)
 console.log(`Installed and registered: ${PLUGIN_NAME}@${dependencies[PLUGIN_NAME]}`)
+console.log('The outer install.ps1 will now ask a running dshmarket to hot-mount this generation; invoking this helper directly still requires a restart.')

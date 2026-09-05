@@ -4,9 +4,13 @@ param(
     [string]$Profile = 'web',
 
     [ValidatePattern('^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._/-]*$')]
-    [string]$Ref = 'v0.2.23',
+    [string]$Ref = 'v0.2.24',
 
     [string]$DesktopRoot,
+
+    [string]$WebUrl,
+
+    [switch]$SkipLiveMount,
 
     [switch]$DryRun
 )
@@ -170,6 +174,257 @@ function Read-JsonFile {
     return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
 }
 
+function ConvertTo-LoopbackWebUri {
+    param(
+        [string]$Candidate
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Candidate)) {
+        return $null
+    }
+
+    $parsed = $null
+    if (-not [System.Uri]::TryCreate($Candidate, [System.UriKind]::Absolute, [ref]$parsed)) {
+        return $null
+    }
+    if ($parsed.Scheme -ne 'http' -or -not $parsed.IsLoopback -or $parsed.Port -le 0) {
+        return $null
+    }
+    return $parsed
+}
+
+function New-DshMarketRouteUri {
+    param(
+        [System.Uri]$WebUri,
+        [string]$Path
+    )
+
+    # Keep the short-lived Harness token from the discovered Web URL while
+    # replacing only the route path.  The token is never written to output.
+    $authority = $WebUri.GetLeftPart([System.UriPartial]::Authority)
+    $query = $WebUri.Query
+    return New-Object -TypeName System.Uri -ArgumentList ("$authority$Path$query")
+}
+
+function Get-DshMarketStatus {
+    param(
+        [System.Uri]$WebUri
+    )
+
+    try {
+        $statusUri = New-DshMarketRouteUri -WebUri $WebUri -Path '/dsh-market/installed'
+        $response = Invoke-WebRequest -UseBasicParsing -Method Get -Uri $statusUri -TimeoutSec 4
+        if ($response.StatusCode -lt 200 -or $response.StatusCode -ge 300) {
+            return $null
+        }
+        $payload = $response.Content | ConvertFrom-Json
+        if ($null -eq $payload -or $null -eq $payload.PSObject.Properties['profile']) {
+            return $null
+        }
+        return [PSCustomObject]@{
+            Uri = $WebUri
+            Data = $payload
+        }
+    } catch {
+        # Endpoint discovery is best effort.  A stale port/token or a DSH
+        # build without dshmarket must fall back to the safe cold-start path.
+        return $null
+    }
+}
+
+function Get-RunningDshWebEndpoint {
+    param(
+        [string]$RequestedUrl,
+        [string]$ProfileName
+    )
+
+    $candidates = @()
+    $seen = @{}
+    if (-not [string]::IsNullOrWhiteSpace($RequestedUrl)) {
+        $requestedUri = ConvertTo-LoopbackWebUri -Candidate $RequestedUrl
+        if ($null -eq $requestedUri) {
+            throw '-WebUrl 只允许指向本机 DSH Web 地址（http://127.0.0.1、localhost 或 [::1]）。'
+        }
+        $candidates += $requestedUri
+    }
+
+    $logPath = $null
+    if (-not [string]::IsNullOrWhiteSpace($env:APPDATA)) {
+        $logPath = Join-Path $env:APPDATA 'dsh-desktop\logs\harness.log'
+    }
+    if ($null -ne $logPath -and (Test-Path -LiteralPath $logPath -PathType Leaf)) {
+        $webPattern = 'dsh web:\s+(?<url>http://(?:127\.0\.0\.1|localhost|\[::1\]):\d+/\?token=[A-Za-z0-9_-]+)'
+        $logLines = @(Get-Content -LiteralPath $logPath -Tail 4000)
+        for ($index = $logLines.Count - 1; $index -ge 0; $index -= 1) {
+            $match = [regex]::Match([string]$logLines[$index], $webPattern)
+            if (-not $match.Success) {
+                continue
+            }
+            $candidate = ConvertTo-LoopbackWebUri -Candidate $match.Groups['url'].Value
+            if ($null -eq $candidate -or $seen.ContainsKey($candidate.AbsoluteUri)) {
+                continue
+            }
+            $candidates += $candidate
+            $seen[$candidate.AbsoluteUri] = $true
+        }
+    }
+
+    foreach ($candidate in $candidates) {
+        $status = Get-DshMarketStatus -WebUri $candidate
+        if ($null -eq $status) {
+            continue
+        }
+        $profileProperty = $status.Data.PSObject.Properties['profile']
+        if ($null -ne $profileProperty -and [string]$profileProperty.Value -eq $ProfileName) {
+            return $status
+        }
+    }
+    return $null
+}
+
+function Get-InstalledPackageProperty {
+    param(
+        [object]$StatusData
+    )
+
+    if ($null -eq $StatusData -or $null -eq $StatusData.PSObject.Properties['installed']) {
+        return $null
+    }
+    $installed = $StatusData.installed
+    if ($null -eq $installed) {
+        return $null
+    }
+    return $installed.PSObject.Properties[$PluginName]
+}
+
+function Get-ActivationState {
+    param(
+        [object]$StatusData
+    )
+
+    if ($null -eq $StatusData -or $null -eq $StatusData.PSObject.Properties['activation']) {
+        return $null
+    }
+    $activation = $StatusData.activation
+    if ($null -eq $activation) {
+        return $null
+    }
+    $pluginActivation = $activation.PSObject.Properties[$PluginName]
+    if ($null -eq $pluginActivation -or $null -eq $pluginActivation.Value) {
+        return $null
+    }
+    $state = $pluginActivation.Value.PSObject.Properties['state']
+    if ($null -eq $state) {
+        return $null
+    }
+    return [string]$state.Value
+}
+
+function Invoke-DshMarketHotMount {
+    param(
+        [System.Uri]$WebUri,
+        [string]$ProfileName
+    )
+
+    # Generation projection and the running market are separate pieces of
+    # state.  Wait briefly for the projected package to become visible before
+    # asking dshmarket to mount it, otherwise a fast install can race its own
+    # symlink publication.
+    $installed = $false
+    for ($attempt = 0; $attempt -lt 4; $attempt += 1) {
+        $status = Get-DshMarketStatus -WebUri $WebUri
+        if ($null -ne $status -and [string]$status.Data.profile -eq $ProfileName) {
+            $installed = $null -ne (Get-InstalledPackageProperty -StatusData $status.Data)
+            if ($installed) {
+                if ((Get-ActivationState -StatusData $status.Data) -eq 'live') {
+                    return [PSCustomObject]@{
+                        Ok = $false
+                        AlreadyLive = $true
+                        NeedsRefresh = $false
+                        Restart = $true
+                        Reason = '插件已在当前 Harness 进程中运行,跳过重复热挂载'
+                    }
+                }
+                break
+            }
+        }
+        if ($attempt -lt 3) {
+            Start-Sleep -Milliseconds 500
+        }
+    }
+    if (-not $installed) {
+        return [PSCustomObject]@{
+            Ok = $false
+            AlreadyLive = $false
+            NeedsRefresh = $false
+            Restart = $true
+            Reason = '运行中的 dshmarket 尚未看到新安装的插件'
+        }
+    }
+
+    try {
+        $toggleUri = New-DshMarketRouteUri -WebUri $WebUri -Path '/dsh-market/toggle'
+        $origin = $WebUri.GetLeftPart([System.UriPartial]::Authority)
+        $body = @{ name = $PluginName; enabled = $true } | ConvertTo-Json -Compress
+        $response = Invoke-WebRequest -UseBasicParsing -Method Post -Uri $toggleUri `
+            -Headers @{ Origin = $origin } -ContentType 'application/json' -Body $body -TimeoutSec 20
+        $result = $response.Content | ConvertFrom-Json
+
+        $activationState = $null
+        if ($null -ne $result.PSObject.Properties['activation'] -and $null -ne $result.activation) {
+            $activationProperty = $result.activation.PSObject.Properties[$PluginName]
+            if ($null -ne $activationProperty -and $null -ne $activationProperty.Value) {
+                $stateProperty = $activationProperty.Value.PSObject.Properties['state']
+                if ($null -ne $stateProperty) {
+                    $activationState = [string]$stateProperty.Value
+                }
+            }
+        }
+        $live = $false
+        if ($null -ne $result.PSObject.Properties['live'] -and $null -ne $result.live) {
+            $live = @($result.live) -contains $PluginName
+        }
+        $ok = $false
+        if ($null -ne $result.PSObject.Properties['ok']) {
+            $ok = [bool]$result.ok
+        }
+        $ok = $ok -and ($activationState -eq 'live' -or $live)
+        $refresh = $true
+        if ($null -ne $result.PSObject.Properties['refresh']) {
+            $refresh = [bool]$result.refresh
+        }
+        $restart = $false
+        if ($null -ne $result.PSObject.Properties['restart']) {
+            $restart = [bool]$result.restart
+        }
+        $reason = $null
+        if (-not $ok -and $null -ne $result.PSObject.Properties['reason']) {
+            $reason = [string]$result.reason
+        }
+        if ([string]::IsNullOrWhiteSpace($reason)) {
+            $reason = 'dshmarket 未确认插件已热挂载'
+        }
+        return [PSCustomObject]@{
+            Ok = $ok
+            AlreadyLive = $false
+            NeedsRefresh = $refresh
+            Restart = $restart -or -not $ok
+            Reason = $reason
+            ActivationState = $activationState
+        }
+    } catch {
+        # Do not echo the exception: WebRequest errors can include the token
+        # embedded in the local URL.  The caller prints a safe fallback.
+        return [PSCustomObject]@{
+            Ok = $false
+            AlreadyLive = $false
+            NeedsRefresh = $false
+            Restart = $true
+            Reason = '调用运行中的 dshmarket 热挂载接口失败'
+        }
+    }
+}
+
 function Remove-LegacyProfilePackage {
     param(
         [string]$ProfileRoot,
@@ -238,7 +493,38 @@ if ($DryRun) {
     Write-Host 'Dry run：未修改 DSH profile。将执行：'
     Write-Host "若 profile 中存在旧的共享安装，将先执行：& '$($desktop.NodePath)' '$($desktop.DshPath)' plugin --profile $Profile remove $PluginName"
     Write-Host "然后通过 DSH Desktop 代际安装器安装：$packageSpec"
+    if ($SkipLiveMount) {
+        Write-Host '并跳过运行中 Harness 的 dshmarket 热挂载。'
+    } else {
+        Write-Host '若 DSH Desktop 正在运行且提供 dshmarket，将安装后热挂载插件；用户只需刷新 Web 页面。'
+    }
     return
+}
+
+# Capture the pre-install state before the profile is changed.  A package that
+# is already live must not be mounted a second time under the same loader name:
+# the running process would then contain two fibers and the new one could win
+# only until the next refresh.  Fresh installs (or installed-but-not-live
+# packages) are safe to hand to dshmarket's official hot-mount route.
+$profileHadPlugin = $false
+if (Test-Path -LiteralPath $profileManifestPath -PathType Leaf) {
+    try {
+        $beforeManifest = Read-JsonFile -Path $profileManifestPath
+        $profileHadPlugin = $null -ne $beforeManifest.dependencies.PSObject.Properties[$PluginName]
+    } catch {
+        $profileHadPlugin = $false
+    }
+}
+$runningEndpoint = $null
+$runningPluginWasLive = $false
+if (-not $SkipLiveMount) {
+    $runningEndpoint = Get-RunningDshWebEndpoint -RequestedUrl $WebUrl -ProfileName $Profile
+    if ($null -ne $runningEndpoint) {
+        $runningPluginWasLive = (Get-ActivationState -StatusData $runningEndpoint.Data) -eq 'live'
+        Write-Host '已发现正在运行的 DSH Web 与 dshmarket；安装后将尝试热挂载。'
+    } else {
+        Write-Host '未发现可用的运行中 dshmarket；安装会先安全暂存，随后按需提示重启。'
+    }
 }
 
 $pnpmState = Use-ProfilePnpm -ProfileRoot $profileRoot
@@ -294,4 +580,40 @@ if ($bundles -notcontains $PluginName) {
 }
 
 Write-Host "安装并验证成功：$PluginName 已注册到 profile '$Profile'。"
-Write-Host '请完全退出并重新打开 DSH Desktop，使新的 Web Client 插件生效。'
+
+if ($SkipLiveMount) {
+    Write-Host '已按 -SkipLiveMount 跳过运行中热挂载；请完全退出并重新打开 DSH Desktop。'
+    return
+}
+
+if ($null -eq $runningEndpoint) {
+    # The app may have started between the preflight and this point.  Discover
+    # it once more for a fresh install, but never risk a duplicate mount when
+    # the profile already contained this plugin before the command ran.
+    if (-not $profileHadPlugin) {
+        $runningEndpoint = Get-RunningDshWebEndpoint -RequestedUrl $WebUrl -ProfileName $Profile
+    }
+}
+
+if ($null -eq $runningEndpoint) {
+    Write-Warning '安装已完成，但未找到运行中的 dshmarket 热挂载接口；请完全退出并重新打开 DSH Desktop。'
+    return
+}
+
+if ($runningPluginWasLive) {
+    Write-Warning '当前运行中的 Harness 已加载旧版 dsh-harness-chat-control；为避免重复 Loader，更新将在下次完全重启 DSH Desktop 时生效。'
+    return
+}
+
+$hotMount = Invoke-DshMarketHotMount -WebUri $runningEndpoint.Uri -ProfileName $Profile
+if ($hotMount.AlreadyLive) {
+    Write-Warning '插件在安装过程中已经由当前 Harness 加载；为避免重复 Loader，本次不再热挂载，更新将在下次完全重启时生效。'
+} elseif ($hotMount.Ok) {
+    Write-Host '已通过运行中的 dshmarket 热挂载插件；请刷新 DSH Web 页面即可启动/显示插件。'
+    if ($hotMount.NeedsRefresh) {
+        Write-Host '提示：刷新当前 DSH 页面（Ctrl+R）即可加载新的 Web Client 代码，无需重启 DSH Desktop。'
+    }
+} else {
+    Write-Warning "安装已完成，但当前 DSH 未确认热挂载：$($hotMount.Reason)"
+    Write-Warning '插件已安全暂存到 profile；请完全退出并重新打开 DSH Desktop 后再检查。'
+}

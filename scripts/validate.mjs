@@ -22,7 +22,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.23') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.24') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -55,11 +55,24 @@ const installer = readFileSync(installerPath, 'utf8')
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "github:$Repository#$Ref"')) {
   throw new Error('Installer must use the canonical GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.23'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.24'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!installer.includes('dsh.profile.bundles')) {
   throw new Error('Installer must verify DSH bundle registration')
+}
+for (const phrase of [
+  'dsh-market/installed',
+  'dsh-market/toggle',
+  'ConvertTo-LoopbackWebUri',
+  'Invoke-DshMarketHotMount',
+  'runningPluginWasLive',
+  '为避免重复 Loader',
+  '[string]$WebUrl',
+  '[switch]$SkipLiveMount',
+  '无需重启 DSH Desktop',
+]) {
+  if (!installer.includes(phrase)) throw new Error(`Installer is missing the live-install seam: ${phrase}`)
 }
 if (!readFileSync(resolve(root, 'cordis.patch.yml'), 'utf8').includes('inject: [clientModules, webServer, webRuntime]')) {
   throw new Error('Host patch must wait for the clientModules service before mounting')
