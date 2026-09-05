@@ -1,4 +1,4 @@
 - insert:
     - id: harness-chat-control
       name: dsh-harness-chat-control
-      inject: [clientModules, webServer, webRuntime]
+      inject: [clientModules, webServer, webRuntime, llm, sessionController]
