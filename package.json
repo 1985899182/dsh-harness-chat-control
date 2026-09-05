@@ -1,7 +1,7 @@
 {
   "name": "dsh-harness-chat-control",
-  "version": "0.2.27",
-  "description": "ChatGPT-style stop, revise, native annotation-chip quote, model-selectable Better Sidebar sidechat controls for DeepSeek Harness Desktop UI.",
+  "version": "0.2.28",
+  "description": "ChatGPT-style stop, revise, native annotation-chip quote, and main-composer-matched model/permission Better Sidebar sidechat controls for DeepSeek Harness Desktop UI.",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {

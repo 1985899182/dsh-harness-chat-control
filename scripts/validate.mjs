@@ -22,7 +22,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.27') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.28') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -55,7 +55,7 @@ const installer = readFileSync(installerPath, 'utf8')
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "github:$Repository#$Ref"')) {
   throw new Error('Installer must use the canonical GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.27'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.28'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!installer.includes('dsh.profile.bundles')) {
@@ -162,8 +162,14 @@ if (!clientSource.includes('[class*="sidechatComposer"][data-dsh-harness-model] 
 if (!clientSource.includes("const SIDECHAT_MODEL_ROUTE = '/dsh-harness-chat-control/sidechat-model'")) {
   throw new Error('Sidechat model selector route is missing')
 }
+if (!clientSource.includes("const SIDECHAT_PERMISSION_ROUTE = '/dsh-harness-chat-control/sidechat-permission'")) {
+  throw new Error('Sidechat permission selector route is missing')
+}
 if (!clientSource.includes('modelCatalog()') || !clientSource.includes('dshhc-sidechat-model-select')) {
   throw new Error('Sidechat model catalog selector is missing')
+}
+for (const phrase of ['dshhc-sidechat-composer-controls', 'dshhc-sidechat-plus', 'dshhc-sidechat-permission', 'dshhc-sidechat-effort-select', 'refreshSidechatAfterSend']) {
+  if (!clientSource.includes(phrase)) throw new Error(`Native sidechat composer control is missing: ${phrase}`)
 }
 if (!clientSource.includes('return [serializeReferenceText(cleanReference), cleanQuestion]')) {
   throw new Error('Sidechat quote must not manufacture a visible question')
@@ -172,6 +178,12 @@ if (!hostSource.includes("const MODEL_ROUTE = '/dsh-harness-chat-control/sidecha
   || !hostSource.includes('selectForNextRequest')
   || !hostSource.includes('trustedRequest')) {
   throw new Error('Host sidechat model route validation/selection seam is missing')
+}
+if (!hostSource.includes("const PERMISSION_ROUTE = '/dsh-harness-chat-control/sidechat-permission'")
+  || !hostSource.includes('permissionPresets')
+  || !hostSource.includes('commands.execute')
+  || !hostSource.includes('permission/preset')) {
+  throw new Error('Host sidechat permission route validation/selection seam is missing')
 }
 for (const phrase of ['dshhc-message-edit', '编辑消息', 'data-composer-input', 'target.submit', 'inputActions', 'keyboard', 'replaceSession', 'sessions.fork']) {
   if (!clientSource.includes(phrase)) throw new Error(`Native composer edit seam is missing: ${phrase}`)
