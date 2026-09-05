@@ -10,9 +10,9 @@
  */
 
 import { existsSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
+import { copyFile, readFile } from 'node:fs/promises'
 import { pathToFileURL } from 'node:url'
-import { join, resolve } from 'node:path'
+import { isAbsolute, join, relative, resolve } from 'node:path'
 
 const PLUGIN_NAME = 'dsh-harness-chat-control'
 const DEFAULT_REPOSITORY = '1985899182/dsh-harness-chat-control'
@@ -24,13 +24,19 @@ function parseArgs(argv) {
     repository: DEFAULT_REPOSITORY,
     profile: DEFAULT_PROFILE,
     desktopRoot: process.env.DSH_DESKTOP_ROOT || DEFAULT_DESKTOP_ROOT,
-    ref: 'v0.2.26',
+    ref: 'v0.2.27',
     sourceDirectory: undefined,
+    syncLiveClient: false,
+    previousPackageDirectory: undefined,
   }
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index]
     if (!argument.startsWith('--')) throw new Error(`Unexpected argument: ${argument}`)
     const key = argument.slice(2)
+    if (key === 'sync-live-client') {
+      options.syncLiveClient = true
+      continue
+    }
     const value = argv[index + 1]
     if (!value || value.startsWith('--')) throw new Error(`Missing value for --${key}`)
     index += 1
@@ -39,7 +45,14 @@ function parseArgs(argv) {
     else if (key === 'desktop-root') options.desktopRoot = value
     else if (key === 'ref') options.ref = value
     else if (key === 'source-directory') options.sourceDirectory = resolve(value)
+    else if (key === 'previous-package-directory') options.previousPackageDirectory = resolve(value)
     else throw new Error(`Unknown option: --${key}`)
+  }
+  if (options.syncLiveClient && options.previousPackageDirectory === undefined) {
+    throw new Error('--sync-live-client requires --previous-package-directory')
+  }
+  if (!options.syncLiveClient && options.previousPackageDirectory !== undefined) {
+    throw new Error('--previous-package-directory requires --sync-live-client')
   }
   return options
 }
@@ -50,6 +63,53 @@ function assertSafe(value, label, pattern) {
 
 async function readJson(path) {
   return JSON.parse(await readFile(path, 'utf8'))
+}
+
+function isInsideDirectory(parent, candidate) {
+  const path = relative(parent, candidate)
+  return path === '' || (!path.startsWith('..') && !isAbsolute(path))
+}
+
+function resolveExportTarget(manifest, packageDirectory, exportName) {
+  const entry = manifest.exports?.[exportName]
+  const target = typeof entry === 'string'
+    ? entry
+    : entry?.default ?? entry?.import ?? entry?.require
+  if (typeof target !== 'string' || !target.startsWith('./')) {
+    throw new Error(`${exportName} must resolve to a relative package file`)
+  }
+  const resolved = resolve(packageDirectory, target)
+  if (!isInsideDirectory(packageDirectory, resolved)) {
+    throw new Error(`${exportName} resolves outside the package directory`)
+  }
+  return resolved
+}
+
+async function synchronizeLiveClient({ dshHome, generationDirectory, previousPackageDirectory }) {
+  const liveGenerationsDirectory = resolve(dshHome, 'profiles', '.generations', 'live')
+  const previousDirectory = resolve(previousPackageDirectory)
+  if (!isInsideDirectory(liveGenerationsDirectory, previousDirectory)) {
+    throw new Error(`Previous package directory is outside DSH live generations: ${previousDirectory}`)
+  }
+
+  const newPackageDirectory = resolve(generationDirectory, 'node_modules', PLUGIN_NAME)
+  const newManifest = await readJson(join(newPackageDirectory, 'package.json'))
+  const previousManifest = await readJson(join(previousDirectory, 'package.json'))
+  if (newManifest.name !== PLUGIN_NAME || previousManifest.name !== PLUGIN_NAME) {
+    throw new Error('Live client synchronization refused: package name does not match the plugin')
+  }
+
+  const newClientPath = resolveExportTarget(newManifest, newPackageDirectory, './client')
+  const previousClientPath = resolveExportTarget(previousManifest, previousDirectory, './client')
+  if (!existsSync(newClientPath)) throw new Error(`New client artifact is missing: ${newClientPath}`)
+  if (!existsSync(previousClientPath)) throw new Error(`Running client artifact is missing: ${previousClientPath}`)
+
+  // ClientModuleRegistry watches the path loaded at process start.  Updating
+  // only this browser artifact lets DSH's built-in HMR notice the new bytes;
+  // the host patch remains in the newly projected generation for the next
+  // process start, so we never mix host code into the running generation.
+  await copyFile(newClientPath, previousClientPath)
+  return { source: newClientPath, target: previousClientPath }
 }
 
 const options = parseArgs(process.argv.slice(2))
@@ -187,7 +247,14 @@ const result = await desktop.withRegistryLock(dshHome, async () => {
   // the bundle before the next launch (the live market intentionally defers
   // this operation until its cold-start projector).
   const projected = await desktop.projectGenerations(dshHome, options.profile)
-  return { install, exposed, published, projected }
+  const liveClientSync = options.syncLiveClient
+    ? await synchronizeLiveClient({
+        dshHome,
+        generationDirectory: install.generation.directory,
+        previousPackageDirectory: options.previousPackageDirectory,
+      })
+    : undefined
+  return { install, exposed, published, projected, liveClientSync }
 })
 
 const manifest = await readJson(profileManifestPath)
@@ -208,4 +275,9 @@ console.log(`Generation staged for next restart: ${result.published.plugins.join
 console.log(`Projected profile layers: ${result.projected.linked.join(', ')}`)
 console.log(`Bundles: ${JSON.stringify(result.published.bundles)}`)
 console.log(`Installed and registered: ${PLUGIN_NAME}@${dependencies[PLUGIN_NAME]}`)
-console.log('The outer install.ps1 will now ask a running dshmarket to hot-mount this generation; invoking this helper directly still requires a restart.')
+if (result.liveClientSync !== undefined) {
+  console.log(`Live client artifact synchronized: ${result.liveClientSync.target}`)
+  console.log('The running DSH process can now receive the new Web Client through its built-in HMR; refresh the page to apply it.')
+} else {
+  console.log('The outer install.ps1 will now ask a running dshmarket to hot-mount this generation; invoking this helper directly still requires a restart.')
+}

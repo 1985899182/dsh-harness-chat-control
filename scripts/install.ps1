@@ -4,7 +4,7 @@ param(
     [string]$Profile = 'web',
 
     [ValidatePattern('^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._/-]*$')]
-    [string]$Ref = 'v0.2.26',
+    [string]$Ref = 'v0.2.27',
 
     [string]$DesktopRoot,
 
@@ -320,6 +320,33 @@ function Get-ActivationState {
     return [string]$state.Value
 }
 
+function Get-ProfilePackageTarget {
+    param(
+        [string]$ProfileRoot
+    )
+
+    $packagePath = Join-Path $ProfileRoot (Join-Path 'node_modules' $PluginName)
+    $packageItem = Get-Item -LiteralPath $packagePath -Force -ErrorAction SilentlyContinue
+    if ($null -eq $packageItem) {
+        return $null
+    }
+
+    # DSH Desktop projects generation packages as junctions.  Capture the
+    # target before projection switches the profile to the new generation:
+    # ClientModuleRegistry in an already-running Harness still watches this
+    # old path, so the installer can copy only the Web Client artifact there
+    # and let the built-in HMR deliver it without restarting DSH.
+    $target = @($packageItem.Target) | Select-Object -First 1
+    if ([string]::IsNullOrWhiteSpace([string]$target)) {
+        return $null
+    }
+    try {
+        return [System.IO.Path]::GetFullPath([string]$target)
+    } catch {
+        return $null
+    }
+}
+
 function Invoke-DshMarketHotMount {
     param(
         [System.Uri]$WebUri,
@@ -507,12 +534,19 @@ if ($DryRun) {
 # only until the next refresh.  Fresh installs (or installed-but-not-live
 # packages) are safe to hand to dshmarket's official hot-mount route.
 $profileHadPlugin = $false
+$previousLivePackageDirectory = $null
 if (Test-Path -LiteralPath $profileManifestPath -PathType Leaf) {
     try {
         $beforeManifest = Read-JsonFile -Path $profileManifestPath
         $profileHadPlugin = $null -ne $beforeManifest.dependencies.PSObject.Properties[$PluginName]
     } catch {
         $profileHadPlugin = $false
+    }
+}
+if ($profileHadPlugin) {
+    $previousLivePackageDirectory = Get-ProfilePackageTarget -ProfileRoot $profileRoot
+    if ($null -ne $previousLivePackageDirectory) {
+        Write-Host "已记录当前运行代际客户端路径：$previousLivePackageDirectory"
     }
 }
 $runningEndpoint = $null
@@ -545,7 +579,20 @@ try {
         $helperPath = Join-Path $temporaryRoot 'install-generation.mjs'
         try {
             Invoke-WebRequest -UseBasicParsing -Uri $helperUrl -OutFile $helperPath
-            & $desktop.NodePath $helperPath --desktop-root $desktop.Root --profile $Profile --repository $Repository --ref $Ref
+            $helperArguments = @(
+                '--desktop-root', $desktop.Root,
+                '--profile', $Profile,
+                '--repository', $Repository,
+                '--ref', $Ref
+            )
+            if ($runningPluginWasLive -and $null -ne $previousLivePackageDirectory) {
+                $helperArguments += @(
+                    '--sync-live-client',
+                    '--previous-package-directory', $previousLivePackageDirectory
+                )
+                Write-Host '当前 Harness 已加载旧代际；安装后将把新的 Web Client 同步到该路径，触发 DSH 内置 HMR。'
+            }
+            & $desktop.NodePath $helperPath @helperArguments
             if ($LASTEXITCODE -ne 0) {
                 throw "DSH Desktop 代际安装失败（退出码：$LASTEXITCODE）。请保留上方安装输出以便排查。"
             }
@@ -601,7 +648,11 @@ if ($null -eq $runningEndpoint) {
 }
 
 if ($runningPluginWasLive) {
-    Write-Warning '当前运行中的 Harness 已加载旧版 dsh-harness-chat-control；为避免重复 Loader，更新将在下次完全重启 DSH Desktop 时生效。'
+    if ($null -ne $previousLivePackageDirectory) {
+        Write-Host '已同步当前运行 Harness 正在监视的 Web Client 文件；请刷新 DSH 页面（Ctrl+R），无需重启 DSH Desktop。'
+        return
+    }
+    Write-Warning '当前运行中的 Harness 已加载旧版 dsh-harness-chat-control，但未能解析其代际客户端路径；为避免重复 Loader，更新将在下次完全重启 DSH Desktop 时生效。'
     return
 }
 
