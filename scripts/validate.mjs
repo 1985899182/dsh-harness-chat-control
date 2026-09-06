@@ -22,7 +22,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.47') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.48') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -56,7 +56,7 @@ const installer = readFileSync(installerPath, 'utf8')
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "github:$Repository#$Ref"')) {
   throw new Error('Installer must use the canonical GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.47'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.48'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!installer.includes('dsh.profile.bundles')) {
@@ -195,7 +195,7 @@ if (!clientSource.includes('return [serializeReferenceText(cleanReference), clea
 if (clientSource.includes('function quoteLines') || clientSource.includes(".map((line) => `> ${line}`")) {
   throw new Error('Quote serialization must not manufacture Markdown blockquotes')
 }
-for (const phrase of ['REFERENCE_CONTEXT_HEADER', 'REFERENCE_CONTEXT_START', 'REFERENCE_CONTEXT_END', '【引用开始】', '【引用结束】']) {
+for (const phrase of ['REFERENCE_CONTEXT_HEADER', 'REFERENCE_CONTEXT_START', 'REFERENCE_CONTEXT_END', 'REFERENCE_TOKEN_PATTERN', 'normalizeReferenceDraft', 'detectLength', '【引用开始】', '【引用结束】']) {
   if (!clientSource.includes(phrase)) throw new Error(`Plain-text quote boundary is missing: ${phrase}`)
 }
 if (!hostSource.includes("const MODEL_ROUTE = '/dsh-harness-chat-control/sidechat-model'")
@@ -464,6 +464,24 @@ const nativeInputActions = {
   submit: () => {}
 }
 const revisionProps = revisionRegistration.config.inject('desktop-session-1')
+let normalizedLegacyDraft = ''
+let legacySubmitted = ''
+const legacyInputActions = {
+  setDraft: (text) => { normalizedLegacyDraft = text },
+  submit: () => { legacySubmitted = normalizedLegacyDraft }
+}
+fakeInputSnapshot = { draft: firstClipboard, draftRev: 9, occurrences: [] }
+revisionRegistration.component({
+  ...revisionProps,
+  useChat: (select) => select(desktopChatSnapshot),
+  useInput: (select) => select(fakeInputSnapshot),
+  inputActions: legacyInputActions
+})
+legacyInputActions.submit()
+if (!legacySubmitted.includes('【引用开始】') || legacySubmitted.includes('dsh-chat-control:')) {
+  throw new Error(`Persisted reference token was sent as raw text instead of serialized context: ${JSON.stringify(legacySubmitted)}`)
+}
+
 revisionProps.revisionStore.request({
   sessionId: 'desktop-session-1',
   key: 'prompt',
