@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import vm from 'node:vm'
+import { apply as applyHost } from '../lib/index.js'
 
 const root = resolve(import.meta.dirname, '..')
 const required = [
@@ -22,7 +23,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.49') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.50') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -56,7 +57,7 @@ const installer = readFileSync(installerPath, 'utf8')
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "github:$Repository#$Ref"')) {
   throw new Error('Installer must use the canonical GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.49'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.50'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!installer.includes('dsh.profile.bundles')) {
@@ -86,6 +87,9 @@ if (!readFileSync(resolve(root, 'cordis.patch.yml'), 'utf8').includes('inject: [
 if (!readFileSync(resolve(root, 'cordis.patch.yml'), 'utf8').includes('webServer, webRuntime')) {
   throw new Error('Host patch must inject the web route services for sidechat model selection')
 }
+if (!readFileSync(resolve(root, 'cordis.patch.yml'), 'utf8').includes('sessionController, agents')) {
+  throw new Error('Host patch must expose the live Agent service for in-place message replacement')
+}
 if (!readFileSync(resolve(root, 'README.md'), 'utf8').includes('scripts/install.ps1')) {
   throw new Error('README must document the one-command installer')
 }
@@ -114,9 +118,8 @@ const registrations = []
 const injectedSlots = []
 const insertedReferences = []
 const registeredSources = []
-const forkCalls = []
-const childPrompts = []
-const openedSessions = []
+const editRequests = []
+const sourcePrompts = []
 const fakeReact = {
   Fragment: Symbol('Fragment'),
   createElement: (...args) => ({ args }),
@@ -136,6 +139,17 @@ const browserSandbox = {
     getSelection: () => ({ toString: () => '' }),
     addEventListener: () => {},
     removeEventListener: () => {}
+  },
+  fetch: async (url, options = {}) => {
+    editRequests.push({
+      url,
+      payload: JSON.parse(options.body || '{}')
+    })
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true, value: { sessionId: 'desktop-session-1', armed: true } })
+    }
   },
   document: {
     querySelector: () => null,
@@ -219,8 +233,11 @@ if (!hostSource.includes("typeof payload?.childId === 'string'")
   || !hostSource.includes("requireField(payload, 'sessionId')")) {
   throw new Error('Host sidechat history route must accept the native sessionId payload')
 }
-for (const phrase of ['dshhc-message-edit', '编辑消息', 'data-composer-input', 'target.submit', 'inputActions', 'keyboard', 'replaceSession', 'sessions.fork']) {
+for (const phrase of ['dshhc-message-edit', '编辑消息', 'data-composer-input', 'target.submit', 'inputActions', 'keyboard', 'replaceSession', 'armSessionEdit', 'SESSION_EDIT_ROUTE']) {
   if (!clientSource.includes(phrase)) throw new Error(`Native composer edit seam is missing: ${phrase}`)
+}
+for (const phrase of ['SESSION_EDIT_ROUTE', 'createSessionEditRoute', 'editedText', 'surfaceOp: { op: \'replace\'', 'sourceEventSeqs']) {
+  if (!hostSource.includes(phrase)) throw new Error(`Host in-place edit route is missing: ${phrase}`)
 }
 for (const phrase of ['dshhc-revision-card', '上一条提问', 'dshhc-revision-editor']) {
   if (clientSource.includes(phrase)) throw new Error(`The obsolete standalone revision UI remains: ${phrase}`)
@@ -228,6 +245,97 @@ for (const phrase of ['dshhc-revision-card', '上一条提问', 'dshhc-revision-
 for (const label of ['添加到对话', '更多详情', '在侧边聊天中提问']) {
   if (!clientSource.includes(label)) throw new Error(`Selection toolbar label is missing: ${label}`)
 }
+
+// Exercise the host seam that makes an edited native prompt replace the
+// existing surface range.  The durable events remain append-only, while the
+// replacement event shadows the old user turn in the same Session.
+const hostRoutes = new Map()
+const hostEffects = []
+const hostEvents = [
+  {
+    seq: 0,
+    type: 'user/message',
+    data: { source: { kind: 'user' }, content: [{ type: 'text', text: '原消息' }] }
+  },
+  {
+    seq: 1,
+    type: 'assistant/message',
+    data: { source: { kind: 'assistant' }, content: [{ type: 'text', text: '原回答' }] }
+  }
+]
+const hostAppends = []
+const hostSession = {
+  events: hostEvents,
+  surface: { nodes: [0, 1] },
+  header: { origin: 'user' },
+  append(type, data, options) {
+    const event = { seq: this.events.length, type, data }
+    this.events.push(event)
+    hostAppends.push({ type, data, options })
+    return event
+  }
+}
+const hostAgent = { session: hostSession, status: 'idle' }
+const hostContext = {
+  effect(callback) {
+    const cleanup = callback()
+    if (typeof cleanup === 'function') hostEffects.push(cleanup)
+    return cleanup
+  },
+  get(name) {
+    if (name === 'webServer') {
+      return {
+        register(route) {
+          hostRoutes.set(route.path, route.handler)
+          return () => hostRoutes.delete(route.path)
+        }
+      }
+    }
+    if (name === 'webRuntime') return { trustedHosts: [] }
+    if (name === 'agents') return { get: (sessionId) => sessionId === 'host-session' ? hostAgent : undefined }
+    return undefined
+  },
+  logger: { warn() {} }
+}
+applyHost(hostContext)
+const sessionEditHandler = hostRoutes.get('/dsh-harness-chat-control/session-edit')
+if (typeof sessionEditHandler !== 'function') throw new Error('Host session-edit route was not registered')
+const hostRequest = (payload) => ({
+  method: 'POST',
+  headers: { host: '127.0.0.1' },
+  async *[Symbol.asyncIterator]() { yield JSON.stringify(payload) }
+})
+const hostResponse = () => {
+  const response = {
+    status: 0,
+    body: undefined,
+    writeHead(status) { this.status = status },
+    end(body) { this.body = JSON.parse(body) }
+  }
+  return response
+}
+const editResponse = hostResponse()
+await sessionEditHandler(hostRequest({
+  sessionId: 'host-session',
+  startSeq: 0,
+  targetText: '原消息',
+  text: '修改后的消息'
+}), editResponse)
+if (editResponse.status !== 200 || editResponse.body?.ok !== true) {
+  throw new Error(`Host session-edit route did not arm the live session: ${JSON.stringify(editResponse)}`)
+}
+hostSession.append('user/message', {
+  source: { kind: 'user' },
+  content: [{ type: 'text', text: '修改后的消息' }]
+}, { surfaceOp: 'append' })
+const editAppend = hostAppends.at(-1)
+if (editAppend?.options?.surfaceOp?.op !== 'replace'
+  || editAppend.options.surfaceOp.start !== 0
+  || editAppend.options.surfaceOp.end !== 1
+  || JSON.stringify(editAppend.options.sourceEventSeqs) !== JSON.stringify([0, 1])) {
+  throw new Error(`Edited prompt was appended instead of replacing the original surface: ${JSON.stringify(editAppend)}`)
+}
+for (const cleanup of hostEffects) cleanup()
 
 vm.runInNewContext(readFileSync(resolve(root, 'lib/client.js'), 'utf8'), browserSandbox, {
   filename: 'lib/client.js'
@@ -287,7 +395,11 @@ const fakeInputTriggers = {
 const fakeSessionsById = new Map()
 const sourceSession = {
   sessionId: 'desktop-session-1',
-  getSnapshot: () => ({ running: false })
+  getSnapshot: () => ({ running: false }),
+  prompt: async (content) => {
+    sourcePrompts.push(content)
+    return { ok: true }
+  }
 }
 fakeSessionsById.set('desktop-session-1', { session: sourceSession })
 
@@ -295,21 +407,6 @@ clientPlugin.apply({
   slots: fakeSlots,
   sessions: {
     binding: (id) => fakeSessionsById.get(String(id)),
-    fork: async ({ atSeq }) => {
-      forkCalls.push(atSeq)
-      const child = {
-        sessionId: 'desktop-session-2',
-        getSnapshot: () => ({ running: false }),
-        prompt: async (content) => {
-          childPrompts.push(content)
-          return { ok: true }
-        }
-      }
-      fakeSessionsById.set('desktop-session-2', { session: child })
-      return 'desktop-session-2'
-    },
-    create: async () => 'desktop-session-2',
-    open: (id) => openedSessions.push(String(id)),
     list: { getSnapshot: () => ({ byId: { 'desktop-session-1': { cwd: 'D:/Study' } } }) },
     scope: () => fakeSessionContext
   },
@@ -505,9 +602,13 @@ revisionRegistration.component({
 })
 nativeInputActions.submit()
 await new Promise((resolve) => setTimeout(resolve, 0))
-if (forkCalls[0] !== 42) throw new Error(`Revision fork was not cut at the previous turn end: ${JSON.stringify(forkCalls)}`)
-if (childPrompts[0]?.[0]?.text !== '修改后的消息') throw new Error('Edited draft was not sent to the replacement session')
-if (openedSessions.at(-1) !== 'desktop-session-2') throw new Error('Replacement session was not opened after send')
+if (editRequests[0]?.url !== '/dsh-harness-chat-control/session-edit'
+  || editRequests[0]?.payload?.sessionId !== 'desktop-session-1'
+  || editRequests[0]?.payload?.startSeq !== 50
+  || editRequests[0]?.payload?.targetText !== '请把答案改短一些') {
+  throw new Error(`In-place edit was not armed for the original message: ${JSON.stringify(editRequests)}`)
+}
+if (sourcePrompts[0]?.[0]?.text !== '修改后的消息') throw new Error('Edited draft was not sent through the original session')
 if (revisionProps.revisionStore.getSnapshot().pending !== null) throw new Error('Revision state was not cleared after replacement send')
 
 const shellProps = shellRegistration.config.inject()
