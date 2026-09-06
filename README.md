@@ -1,5 +1,7 @@
 # dsh-harness-chat-control
 
+[English](README_EN.md) · [日本語](README_JA.md) · [한국어](README_KO.md)
+
 让 DSH Desktop 的对话交互接近 ChatGPT。
 
 > **项目目标：复刻 ChatGPT 的两种引用对话形式。**
