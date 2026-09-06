@@ -23,7 +23,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.50') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.51') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -57,7 +57,7 @@ const installer = readFileSync(installerPath, 'utf8')
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "github:$Repository#$Ref"')) {
   throw new Error('Installer must use the canonical GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.50'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.51'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!installer.includes('dsh.profile.bundles')) {
@@ -276,6 +276,18 @@ const hostSession = {
   }
 }
 const hostAgent = { session: hostSession, status: 'idle' }
+const coldSession = {
+  events: hostEvents.map((event) => ({ ...event, data: { ...event.data, content: [{ type: 'text', text: event.type === 'user/message' ? '冷会话原消息' : '冷会话原回答' }] } })),
+  surface: { nodes: [0, 1] },
+  header: { origin: 'user' },
+  append(type, data, options) {
+    const event = { seq: this.events.length, type, data }
+    this.events.push(event)
+    hostAppends.push({ type, data, options, cold: true })
+    return event
+  }
+}
+const coldAgent = { session: coldSession, status: 'idle' }
 const hostContext = {
   effect(callback) {
     const cleanup = callback()
@@ -293,6 +305,9 @@ const hostContext = {
     }
     if (name === 'webRuntime') return { trustedHosts: [] }
     if (name === 'agents') return { get: (sessionId) => sessionId === 'host-session' ? hostAgent : undefined }
+    if (name === 'sessionController') return {
+      resolveAgent: async (sessionId) => sessionId === 'cold-session' ? { agent: coldAgent } : { error: { code: 'session-not-found' } }
+    }
     return undefined
   },
   logger: { warn() {} }
@@ -334,6 +349,25 @@ if (editAppend?.options?.surfaceOp?.op !== 'replace'
   || editAppend.options.surfaceOp.end !== 1
   || JSON.stringify(editAppend.options.sourceEventSeqs) !== JSON.stringify([0, 1])) {
   throw new Error(`Edited prompt was appended instead of replacing the original surface: ${JSON.stringify(editAppend)}`)
+}
+
+const coldResponse = hostResponse()
+await sessionEditHandler(hostRequest({
+  sessionId: 'cold-session',
+  startSeq: 0,
+  targetText: '冷会话原消息',
+  text: '冷会话修改后的消息'
+}), coldResponse)
+if (coldResponse.status !== 200 || coldResponse.body?.ok !== true) {
+  throw new Error(`Cold-session edit was not resumed through sessionController: ${JSON.stringify(coldResponse)}`)
+}
+coldSession.append('user/message', {
+  source: { kind: 'user' },
+  content: [{ type: 'text', text: '冷会话修改后的消息' }]
+}, { surfaceOp: 'append' })
+const coldEditAppend = hostAppends.at(-1)
+if (coldEditAppend?.options?.surfaceOp?.op !== 'replace') {
+  throw new Error(`Cold-session prompt was not armed for surface replacement: ${JSON.stringify(coldEditAppend)}`)
 }
 for (const cleanup of hostEffects) cleanup()
 
@@ -556,10 +590,14 @@ const tailQuoteView = quoteRegistration.component({
 })
 if (tailQuoteView === null) throw new Error('Assistant action cannot read the current TurnTail snapshot')
 
-let nativeDraft = ''
+let nativeDraft = '修改后的消息'
+let nativeSubmitCalls = 0
 const nativeInputActions = {
   setDraft: (text) => { nativeDraft = text },
-  submit: () => {}
+  submit: () => {
+    nativeSubmitCalls += 1
+    sourcePrompts.push([{ type: 'text', text: nativeDraft.trim() }])
+  }
 }
 const revisionProps = revisionRegistration.config.inject('desktop-session-1')
 let normalizedLegacyDraft = ''
@@ -594,12 +632,6 @@ const revisionView = revisionRegistration.component({
 if (revisionView !== null) throw new Error('Revision dock must not render a standalone edit card')
 if (nativeDraft !== '请把答案改短一些') throw new Error('Edit request did not seed the native composer draft')
 nativeDraft = '修改后的消息'
-revisionRegistration.component({
-  ...revisionProps,
-  useChat: (select) => select(desktopChatSnapshot),
-  useInput: (select) => select({ draft: nativeDraft }),
-  inputActions: nativeInputActions
-})
 nativeInputActions.submit()
 await new Promise((resolve) => setTimeout(resolve, 0))
 if (editRequests[0]?.url !== '/dsh-harness-chat-control/session-edit'
@@ -608,6 +640,7 @@ if (editRequests[0]?.url !== '/dsh-harness-chat-control/session-edit'
   || editRequests[0]?.payload?.targetText !== '请把答案改短一些') {
   throw new Error(`In-place edit was not armed for the original message: ${JSON.stringify(editRequests)}`)
 }
+if (nativeSubmitCalls !== 1) throw new Error('Edited draft did not invoke the native composer submit action')
 if (sourcePrompts[0]?.[0]?.text !== '修改后的消息') throw new Error('Edited draft was not sent through the original session')
 if (revisionProps.revisionStore.getSnapshot().pending !== null) throw new Error('Revision state was not cleared after replacement send')
 
