@@ -18,13 +18,20 @@ const PLUGIN_NAME = 'dsh-harness-chat-control'
 const DEFAULT_REPOSITORY = '1985899182/dsh-harness-chat-control'
 const DEFAULT_PROFILE = 'web'
 const DEFAULT_DESKTOP_ROOT = 'D:\\DSH\\DSH Desktop'
+const DEFAULT_REF = 'v0.2.60'
+
+function githubGitSpec(repository, ref) {
+  return `git+https://github.com/${repository}.git#${ref}`
+}
 
 function parseArgs(argv) {
   const options = {
     repository: DEFAULT_REPOSITORY,
     profile: DEFAULT_PROFILE,
     desktopRoot: process.env.DSH_DESKTOP_ROOT || DEFAULT_DESKTOP_ROOT,
-    ref: 'v0.2.59',
+    ref: DEFAULT_REF,
+    registry: undefined,
+    proxy: undefined,
     sourceDirectory: undefined,
     syncLiveClient: false,
     previousPackageDirectory: undefined,
@@ -44,6 +51,8 @@ function parseArgs(argv) {
     else if (key === 'profile') options.profile = value
     else if (key === 'desktop-root') options.desktopRoot = value
     else if (key === 'ref') options.ref = value
+    else if (key === 'registry') options.registry = value
+    else if (key === 'proxy') options.proxy = value
     else if (key === 'source-directory') options.sourceDirectory = resolve(value)
     else if (key === 'previous-package-directory') options.previousPackageDirectory = resolve(value)
     else throw new Error(`Unknown option: --${key}`)
@@ -59,6 +68,19 @@ function parseArgs(argv) {
 
 function assertSafe(value, label, pattern) {
   if (!pattern.test(value)) throw new Error(`${label} is not safe: ${value}`)
+}
+
+function assertHttpUrl(value, label) {
+  if (value === undefined || value === null || value === '') return
+  let parsed
+  try {
+    parsed = new URL(value)
+  } catch {
+    throw new Error(`${label} must be an absolute http(s) URL`)
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.hostname === '' || parsed.username !== '' || parsed.password !== '') {
+    throw new Error(`${label} must be an absolute http(s) URL without embedded credentials`)
+  }
 }
 
 async function readJson(path) {
@@ -116,6 +138,8 @@ const options = parseArgs(process.argv.slice(2))
 assertSafe(options.profile, 'profile', /^[A-Za-z0-9][A-Za-z0-9._-]*$/u)
 assertSafe(options.ref, 'ref', /^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._/-]*$/u)
 assertSafe(options.repository, 'repository', /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u)
+assertHttpUrl(options.registry, '--registry')
+assertHttpUrl(options.proxy, '--proxy')
 
 const desktopRoot = resolve(options.desktopRoot)
 if (options.sourceDirectory !== undefined && !existsSync(options.sourceDirectory)) {
@@ -203,9 +227,21 @@ for (const name of required) {
 const appData = process.env.APPDATA
 if (!appData) throw new Error('APPDATA is not available; cannot locate DSH Desktop Harness home.')
 const dshHome = join(appData, 'dsh-desktop', 'harness')
-const pluginSpec = `github:${options.repository}#${options.ref}`
+const pluginSpec = githubGitSpec(options.repository, options.ref)
 const profileDir = join(dshHome, 'profiles', options.profile)
 const profileManifestPath = join(profileDir, 'package.json')
+
+const childEnvironment = { ...process.env }
+if (typeof options.registry === 'string' && options.registry.trim() !== '') {
+  childEnvironment.NPM_CONFIG_REGISTRY = options.registry
+  childEnvironment.npm_config_registry = options.registry
+}
+if (typeof options.proxy === 'string' && options.proxy.trim() !== '') {
+  childEnvironment.HTTP_PROXY = options.proxy
+  childEnvironment.HTTPS_PROXY = options.proxy
+  childEnvironment.ALL_PROXY = options.proxy
+}
+childEnvironment.GIT_TERMINAL_PROMPT = '0'
 
 console.log(`DSH Desktop: ${desktopRoot}`)
 console.log(`Harness home: ${dshHome}`)
@@ -223,7 +259,7 @@ const result = await desktop.withRegistryLock(dshHome, async () => {
     expectedPluginName: PLUGIN_NAME,
     nodeExecutablePath: nodePath,
     pnpmEntryPath: desktop.resolvePnpmEntry(desktopModuleUrl),
-    environment: process.env,
+    environment: childEnvironment,
     onTrace: (line) => console.log(line),
     onOutput: (chunk) => process.stdout.write(chunk),
   })
@@ -279,5 +315,5 @@ if (result.liveClientSync !== undefined) {
   console.log(`Live client artifact synchronized: ${result.liveClientSync.target}`)
   console.log('The running DSH process can now receive the new Web Client through its built-in HMR; refresh the page to apply it.')
 } else {
-  console.log('The outer install.ps1 will now ask a running dshmarket to hot-mount this generation; invoking this helper directly still requires a restart.')
+  console.log('The caller must decide whether hot-mount is safe; a fresh or non-live generation install requires a full DSH Desktop restart.')
 }

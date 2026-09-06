@@ -51,11 +51,25 @@ DSH Desktop の会話操作を ChatGPT に近づけるプラグインです。
 Windows PowerShell で、現在の安定版インストーラーを実行します。
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.59/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.59'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.60/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.60'
 ```
 
-インストーラーはプラグインを DSH Desktop の `web` プロファイルに追加し、起動中の Web Client へのホットマウントを試みます。成功メッセージが表示されたら DSH ページを `Ctrl+R` で更新してください。デスクトップアプリの再起動は不要です。
+インストーラーはプラグインを DSH Desktop の `web` プロファイルに追加します。初回の世代インストール、またはプラグインが live でない場合は安全にステージングして、DSH Desktop の完全な再起動を案内します。すでに live のプラグインを更新するときだけ Web Client を HMR で同期し、その後ページを `Ctrl+R` で更新します。
+
+インストール元は明示的な HTTPS Git URL です。pnpm が GitHub の短縮記法を SSH として解釈することはありません。インストーラーは `HTTP_PROXY`/`HTTPS_PROXY` 環境変数または WinINET のプロキシを確認し、pnpm、git、node の子プロセスへ渡します。明示的に指定することもできます。
+
+```powershell
+& ([scriptblock]::Create($script)) -Ref 'v0.2.60' -Proxy 'http://127.0.0.1:7897'
+```
+
+レジストリへの接続が遅い場合は、registry URL とリトライ回数を指定します。
+
+```powershell
+& ([scriptblock]::Create($script)) -Ref 'v0.2.60' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
+```
+
+このコマンドはダウンロードしたスクリプトをメモリ上の `scriptblock` として実行するため、PowerShell の実行ポリシーを変更する必要はありません。`.ps1` として保存して直接実行する場合は `powershell -ExecutionPolicy Bypass -File` を使用してください。
 
 プロファイルがすでに Sidebar `0.18.x` の場合は、先に次の互換修正を実行します。
 
@@ -67,6 +81,8 @@ $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
 ```
 
 その後、安定版インストーラーをもう一度実行してページを更新します。
+
+dshmarket が HTTP 502 などのホットマウントエラーを返した場合、インストーラーはトークンを伏せた HTTP ステータスとレスポンス本文を表示し、コールドスタートが必要であることを案内します。プロキシのタイムアウトをインストール成功とは扱いません。
 
 ## 使い方
 
@@ -84,7 +100,7 @@ npm test
 
 ## リリース
 
-現在のマイルストーンは **`v0.2.59`** です。DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1` で検証しています。DSH または Harness のメジャーバージョンを更新した場合は、標準 Slot と状態インターフェースを再確認してください。
+現在のマイルストーンは **`v0.2.60`** です。DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1` で検証しています。DSH または Harness のメジャーバージョンを更新した場合は、標準 Slot と状態インターフェースを再確認してください。
 
 ## ライセンス
 

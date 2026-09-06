@@ -4,11 +4,18 @@ param(
     [string]$Profile = 'web',
 
     [ValidatePattern('^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._/-]*$')]
-    [string]$Ref = 'v0.2.59',
+    [string]$Ref = 'v0.2.60',
 
     [string]$DesktopRoot,
 
     [string]$WebUrl,
+
+    [string]$Proxy,
+
+    [string]$Registry,
+
+    [ValidateRange(1, 20)]
+    [int]$FetchRetries = 5,
 
     [switch]$SkipLiveMount,
 
@@ -86,6 +93,286 @@ function Assert-CommandAvailable {
 
     if ($null -eq (Get-Command $CommandName -ErrorAction SilentlyContinue)) {
         throw "未在 PATH 中找到 $CommandName。$InstallHint"
+    }
+}
+
+function ConvertTo-HttpProxyUri {
+    param(
+        [string]$Candidate,
+        [string]$Label = '代理'
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Candidate)) {
+        return $null
+    }
+
+    $value = $Candidate.Trim()
+    if ($value -notmatch '^[A-Za-z][A-Za-z0-9+.-]*://') {
+        $value = "http://$value"
+    }
+    $parsed = $null
+    if (-not [System.Uri]::TryCreate($value, [System.UriKind]::Absolute, [ref]$parsed)) {
+        throw "$Label 地址无效：$Candidate"
+    }
+    if ($parsed.Scheme -notin @('http', 'https') -or
+        [string]::IsNullOrWhiteSpace($parsed.Host) -or
+        -not [string]::IsNullOrWhiteSpace($parsed.UserInfo)) {
+        throw "$Label 只支持不含账号密码的 http(s) 地址：$Candidate"
+    }
+    return $parsed
+}
+
+function Get-WinInetProxyUri {
+    $settingsPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings'
+    try {
+        $settings = Get-ItemProperty -LiteralPath $settingsPath -ErrorAction Stop
+        if ([int]$settings.ProxyEnable -ne 1) {
+            return $null
+        }
+        $proxyServer = [string]$settings.ProxyServer
+        if ([string]::IsNullOrWhiteSpace($proxyServer)) {
+            return $null
+        }
+
+        $entries = @($proxyServer -split ';' | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ -ne '' })
+        $selected = $null
+        foreach ($preferredProtocol in @('https', 'http')) {
+            $match = $entries | Where-Object { $_ -match "^(?i)$preferredProtocol=(?<server>.+)$" } | Select-Object -First 1
+            if ($null -ne $match) {
+                $selected = ([regex]::Match([string]$match, "^(?i)$preferredProtocol=(?<server>.+)$")).Groups['server'].Value.Trim()
+                break
+            }
+        }
+        if ([string]::IsNullOrWhiteSpace($selected)) {
+            $selected = $entries | Select-Object -First 1
+        }
+        if ([string]::IsNullOrWhiteSpace($selected)) {
+            return $null
+        }
+        try {
+            return ConvertTo-HttpProxyUri -Candidate $selected -Label 'WinINET 代理'
+        } catch {
+            Write-Warning "WinINET 代理已启用但无法解析；请使用 -Proxy 明确指定代理。"
+            return $null
+        }
+    } catch {
+        return $null
+    }
+}
+
+function Get-EnvironmentProxyUri {
+    foreach ($name in @('HTTPS_PROXY', 'HTTP_PROXY', 'ALL_PROXY')) {
+        $value = [Environment]::GetEnvironmentVariable($name, 'Process')
+        if ([string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+        try {
+            return ConvertTo-HttpProxyUri -Candidate $value -Label "$name 代理"
+        } catch {
+            Write-Warning "$name 环境变量不是可用的 http(s) 代理，将继续检查其他代理来源。"
+        }
+    }
+    return $null
+}
+
+function Resolve-ChildProcessProxy {
+    param(
+        [string]$RequestedProxy
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($RequestedProxy)) {
+        return [PSCustomObject]@{
+            Uri = ConvertTo-HttpProxyUri -Candidate $RequestedProxy -Label '-Proxy'
+            Source = '命令行'
+        }
+    }
+
+    $environmentProxy = Get-EnvironmentProxyUri
+    if ($null -ne $environmentProxy) {
+        return [PSCustomObject]@{
+            Uri = $environmentProxy
+            Source = '环境变量'
+        }
+    }
+
+    $winInetProxy = Get-WinInetProxyUri
+    if ($null -ne $winInetProxy) {
+        return [PSCustomObject]@{
+            Uri = $winInetProxy
+            Source = 'WinINET'
+        }
+    }
+
+    return [PSCustomObject]@{
+        Uri = $null
+        Source = '未检测到'
+    }
+}
+
+function Initialize-ChildProcessNetwork {
+    param(
+        [string]$RequestedProxy,
+        [string]$RequestedRegistry,
+        [int]$Retries
+    )
+
+    $names = @(
+        'HTTP_PROXY',
+        'HTTPS_PROXY',
+        'ALL_PROXY',
+        'NO_PROXY',
+        'NPM_CONFIG_REGISTRY',
+        'npm_config_registry',
+        'NPM_CONFIG_FETCH_RETRIES',
+        'npm_config_fetch_retries',
+        'GIT_TERMINAL_PROMPT'
+    )
+    $state = [PSCustomObject]@{
+        Names = $names
+        Values = @{}
+        Present = @{}
+        ProxyUri = $null
+        RegistryUri = $null
+    }
+    foreach ($name in $names) {
+        $state.Present[$name] = Test-Path -LiteralPath "Env:$name"
+        if ($state.Present[$name]) {
+            $state.Values[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+        }
+    }
+
+    # Validate every user-supplied URL before mutating the caller's
+    # environment.  The installer runs from an in-memory scriptblock, so a
+    # validation error must not leave proxy variables behind in that shell.
+    $proxy = Resolve-ChildProcessProxy -RequestedProxy $RequestedProxy
+    $registryUri = $null
+    if (-not [string]::IsNullOrWhiteSpace($RequestedRegistry)) {
+        $registryUri = ConvertTo-HttpProxyUri -Candidate $RequestedRegistry -Label '-Registry'
+    }
+
+    if ($null -ne $proxy.Uri) {
+        $proxyValue = $proxy.Uri.AbsoluteUri
+        $env:HTTP_PROXY = $proxyValue
+        $env:HTTPS_PROXY = $proxyValue
+        $env:ALL_PROXY = $proxyValue
+        $state.ProxyUri = $proxy.Uri
+        Write-Host "已检测到 $($proxy.Source) 代理，并将传递给 pnpm、git、node 子进程。"
+    } else {
+        Write-Warning '未检测到可传递给子进程的 HTTP 代理；如需代理，请使用 -Proxy <http(s)://host:port>。'
+    }
+
+    $noProxyTokens = @()
+    $existingNoProxy = [Environment]::GetEnvironmentVariable('NO_PROXY', 'Process')
+    if (-not [string]::IsNullOrWhiteSpace($existingNoProxy)) {
+        $noProxyTokens += @($existingNoProxy -split ',' | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ -ne '' })
+    }
+    $noProxyTokens += @('127.0.0.1', 'localhost', '[::1]')
+    $env:NO_PROXY = (($noProxyTokens | Select-Object -Unique) -join ',')
+
+    if ($null -ne $registryUri) {
+        $env:NPM_CONFIG_REGISTRY = $registryUri.AbsoluteUri
+        $env:npm_config_registry = $registryUri.AbsoluteUri
+        $state.RegistryUri = $registryUri
+        Write-Host '已为 pnpm/npm 子进程设置自定义 registry。'
+    }
+
+    if ($Retries -gt 0) {
+        $retryValue = [string]$Retries
+        $env:NPM_CONFIG_FETCH_RETRIES = $retryValue
+        $env:npm_config_fetch_retries = $retryValue
+    }
+    $env:GIT_TERMINAL_PROMPT = '0'
+    return $state
+}
+
+function Restore-ChildProcessNetwork {
+    param(
+        [object]$State
+    )
+
+    if ($null -eq $State) {
+        return
+    }
+    foreach ($name in $State.Names) {
+        if ($State.Present[$name]) {
+            Set-Item -LiteralPath "Env:$name" -Value $State.Values[$name]
+        } else {
+            Remove-Item -LiteralPath "Env:$name" -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Get-NetworkFailureHint {
+    param(
+        [object]$NetworkState
+    )
+
+    if ($null -eq $NetworkState -or $null -eq $NetworkState.ProxyUri) {
+        return '未检测到可传递给子进程的 HTTP 代理；如需代理，请重试并加入 -Proxy <http(s)://host:port>。'
+    }
+    return '已向子进程传递代理；请确认该代理当前可访问 github.com 和 npm registry。'
+}
+
+function Get-SafeHttpErrorDetail {
+    param(
+        [object]$ErrorRecord
+    )
+
+    $statusCode = $null
+    $body = $null
+    try {
+        $response = $ErrorRecord.Exception.Response
+        if ($null -ne $response) {
+            $statusProperty = $response.PSObject.Properties['StatusCode']
+            if ($null -ne $statusProperty -and $null -ne $statusProperty.Value) {
+                $statusCode = [int]$statusProperty.Value
+            }
+
+            # Windows PowerShell exposes WebResponse.GetResponseStream(),
+            # while PowerShell 7 exposes HttpResponseMessage.Content.  Read
+            # either shape without ever echoing the exception URL (which may
+            # contain dshmarket's local auth token).
+            $streamMethod = $response.PSObject.Methods['GetResponseStream']
+            if ($null -ne $streamMethod) {
+                $stream = $response.GetResponseStream()
+                if ($null -ne $stream) {
+                    $reader = New-Object System.IO.StreamReader($stream)
+                    try {
+                        $body = $reader.ReadToEnd()
+                    } finally {
+                        $reader.Dispose()
+                        $stream.Dispose()
+                    }
+                }
+            } else {
+                $contentProperty = $response.PSObject.Properties['Content']
+                $content = if ($null -ne $contentProperty) { $contentProperty.Value } else { $null }
+                if ($null -ne $content) {
+                    $readMethod = $content.PSObject.Methods['ReadAsStringAsync']
+                    if ($null -ne $readMethod) {
+                        $body = $content.ReadAsStringAsync().GetAwaiter().GetResult()
+                    } else {
+                        $body = [string]$content
+                    }
+                }
+            }
+        }
+    } catch {
+        # A malformed/non-standard response should not hide a status code
+        # already read above, and the caller still gets a safe generic reason.
+    }
+    if (-not [string]::IsNullOrWhiteSpace($body)) {
+        $body = [regex]::Replace($body, '(?i)([?&](?:token|access_token|auth_token|api_key)=)[^&\s"<>]+', '$1<redacted>')
+        $body = [regex]::Replace($body, '(?i)("(?:token|access_token|auth_token|api_key|authorization)"\s*:\s*")[^"]*(")', '$1<redacted>$2')
+        $body = [regex]::Replace($body, '(?i)bearer\s+[A-Za-z0-9._~+/-]+', 'Bearer <redacted>')
+        $body = [regex]::Replace($body, '\s+', ' ').Trim()
+        if ($body.Length -gt 500) {
+            $body = $body.Substring(0, 500) + '…'
+        }
+    }
+    return [PSCustomObject]@{
+        StatusCode = $statusCode
+        Body = $body
     }
 }
 
@@ -585,14 +872,20 @@ function Invoke-DshMarketHotMount {
             ActivationState = $activationState
         }
     } catch {
-        # Do not echo the exception: WebRequest errors can include the token
-        # embedded in the local URL.  The caller prints a safe fallback.
+        $detail = Get-SafeHttpErrorDetail -ErrorRecord $_
+        $reason = '调用运行中的 dshmarket 热挂载接口失败'
+        if ($null -ne $detail.StatusCode) {
+            $reason = "dshmarket 热挂载返回 HTTP $($detail.StatusCode)"
+        }
+        if (-not [string]::IsNullOrWhiteSpace($detail.Body)) {
+            $reason += "；响应体：$($detail.Body)"
+        }
         return [PSCustomObject]@{
             Ok = $false
             AlreadyLive = $false
             NeedsRefresh = $false
             Restart = $true
-            Reason = '调用运行中的 dshmarket 热挂载接口失败'
+            Reason = $reason
         }
     }
 }
@@ -652,7 +945,7 @@ if ([string]::IsNullOrWhiteSpace($env:APPDATA)) {
     throw '无法读取 APPDATA，无法确定 DSH Desktop 的 Harness home。'
 }
 $env:DSH_HOME = Join-Path $env:APPDATA 'dsh-desktop\harness'
-$packageSpec = "github:$Repository#$Ref"
+$packageSpec = "git+https://github.com/$Repository.git#$Ref"
 $profileRoot = Join-Path $env:DSH_HOME (Join-Path 'profiles' $Profile)
 $profileManifestPath = Join-Path $env:DSH_HOME (Join-Path 'profiles' (Join-Path $Profile 'package.json'))
 Warn-IncompatibleBetterSidebar -ProfileManifestPath $profileManifestPath -HarnessVersion ([string]$dshManifest.version)
@@ -669,7 +962,7 @@ if ($DryRun) {
     if ($SkipLiveMount) {
         Write-Host '并跳过运行中 Harness 的 dshmarket 热挂载。'
     } else {
-        Write-Host '若 DSH Desktop 正在运行且提供 dshmarket，将安装后热挂载插件；用户只需刷新 Web 页面。'
+        Write-Host '首次代际安装或当前插件未 live 时会跳过热挂载并提示完全重启；只有已 live 插件升级才同步客户端并使用 HMR。'
     }
     return
 }
@@ -678,7 +971,8 @@ if ($DryRun) {
 # is already live must not be mounted a second time under the same loader name:
 # the running process would then contain two fibers and the new one could win
 # only until the next refresh.  Fresh installs (or installed-but-not-live
-# packages) are safe to hand to dshmarket's official hot-mount route.
+# packages) require a cold projection, so only an already-live upgrade can use
+# the running dshmarket route below.
 $profileHadPlugin = $false
 $previousLivePackageDirectory = $null
 if (Test-Path -LiteralPath $profileManifestPath -PathType Leaf) {
@@ -713,62 +1007,104 @@ if (-not $SkipLiveMount) {
                 $previousLivePackageDirectory = $detectedLivePackageDirectory
             }
         }
-        Write-Host '已发现正在运行的 DSH Web 与 dshmarket；安装后将尝试热挂载。'
+        if ($profileHadPlugin -and $runningPluginWasLive) {
+            Write-Host '已发现正在运行的 DSH Web 与 dshmarket；这是已 live 插件升级，安装后将同步客户端并触发 HMR。'
+        } else {
+            Write-Host '已发现正在运行的 DSH Web 与 dshmarket；这是首次代际安装或未 live 插件，安装后将暂存并提示完全重启。'
+        }
     } else {
         Write-Host '未发现可用的运行中 dshmarket；安装会先安全暂存，随后按需提示重启。'
     }
 }
 
-$pnpmState = Use-ProfilePnpm -ProfileRoot $profileRoot
+$networkState = $null
+$pnpmState = $null
+$generationInstallUsed = $false
 try {
-    $existingManifest = Read-JsonFile -Path $profileManifestPath
-    Remove-LegacyProfilePackage -ProfileRoot $profileRoot -ProfileManifest $existingManifest
+    $networkState = Initialize-ChildProcessNetwork `
+        -RequestedProxy $Proxy `
+        -RequestedRegistry $Registry `
+        -Retries $FetchRetries
+    $pnpmState = Use-ProfilePnpm -ProfileRoot $profileRoot
+    try {
+        $existingManifest = Read-JsonFile -Path $profileManifestPath
+        Remove-LegacyProfilePackage -ProfileRoot $profileRoot -ProfileManifest $existingManifest
 
-    if (-not (Test-Path -LiteralPath $desktop.GenerationInstallerPath -PathType Leaf)) {
-        Write-Warning '当前 DSH Desktop 未提供代际安装器，将回退到内置 CLI 安装。'
-        & $desktop.NodePath $desktop.DshPath plugin --profile $Profile add --save-exact $packageSpec
-        if ($LASTEXITCODE -ne 0) {
-            throw "DSH 插件安装失败（退出码：$LASTEXITCODE）。请保留上方 pnpm 输出以便排查。"
-        }
-    } else {
-        $helperUrl = "https://raw.githubusercontent.com/$Repository/$Ref/scripts/install-generation.mjs"
-        $temporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('dsh-harness-chat-control-generation-' + [guid]::NewGuid().ToString('N'))
-        New-Item -ItemType Directory -Path $temporaryRoot | Out-Null
-        $helperPath = Join-Path $temporaryRoot 'install-generation.mjs'
-        try {
-            Invoke-WebRequest -UseBasicParsing -Uri $helperUrl -OutFile $helperPath
-            $helperArguments = @(
-                '--desktop-root', $desktop.Root,
-                '--profile', $Profile,
-                '--repository', $Repository,
-                '--ref', $Ref
-            )
-            if ($runningPluginWasLive -and $null -ne $previousLivePackageDirectory) {
-                $helperArguments += @(
-                    '--sync-live-client',
-                    '--previous-package-directory', $previousLivePackageDirectory
-                )
-                Write-Host '当前 Harness 已加载旧代际；安装后将把新的 Web Client 同步到该路径，触发 DSH 内置 HMR。'
-            }
-            & $desktop.NodePath $helperPath @helperArguments
+        if (-not (Test-Path -LiteralPath $desktop.GenerationInstallerPath -PathType Leaf)) {
+            Write-Warning '当前 DSH Desktop 未提供代际安装器，将回退到内置 CLI 安装。'
+            & $desktop.NodePath $desktop.DshPath plugin --profile $Profile add --save-exact $packageSpec
             if ($LASTEXITCODE -ne 0) {
-                throw "DSH Desktop 代际安装失败（退出码：$LASTEXITCODE）。请保留上方安装输出以便排查。"
+                throw "DSH 插件安装失败（退出码：$LASTEXITCODE）。$(Get-NetworkFailureHint -NetworkState $networkState)"
             }
-        } finally {
-            if (Test-Path -LiteralPath $temporaryRoot) {
-                Remove-Item -LiteralPath $temporaryRoot -Recurse -Force
+        } else {
+            $generationInstallUsed = $true
+            $helperUrl = "https://raw.githubusercontent.com/$Repository/$Ref/scripts/install-generation.mjs"
+            $generationTemporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('dsh-harness-chat-control-generation-' + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path $generationTemporaryRoot | Out-Null
+            $helperPath = Join-Path $generationTemporaryRoot 'install-generation.mjs'
+            try {
+                $downloadParameters = @{
+                    UseBasicParsing = $true
+                    Uri = $helperUrl
+                    OutFile = $helperPath
+                }
+                if ($null -ne $networkState.ProxyUri) {
+                    $downloadParameters.Proxy = $networkState.ProxyUri.AbsoluteUri
+                }
+                try {
+                    Invoke-WebRequest @downloadParameters
+                } catch {
+                    $detail = Get-SafeHttpErrorDetail -ErrorRecord $_
+                    $reason = '网络请求失败'
+                    if ($null -ne $detail.StatusCode) {
+                        $reason = "HTTP $($detail.StatusCode)"
+                    }
+                    if (-not [string]::IsNullOrWhiteSpace($detail.Body)) {
+                        $reason += "；响应体：$($detail.Body)"
+                    }
+                    throw "无法下载代际安装 helper：$reason。$(Get-NetworkFailureHint -NetworkState $networkState)"
+                }
+                $helperArguments = @(
+                    '--desktop-root', $desktop.Root,
+                    '--profile', $Profile,
+                    '--repository', $Repository,
+                    '--ref', $Ref
+                )
+                if ($null -ne $networkState.RegistryUri) {
+                    $helperArguments += @('--registry', $networkState.RegistryUri.AbsoluteUri)
+                }
+                if ($null -ne $networkState.ProxyUri) {
+                    $helperArguments += @('--proxy', $networkState.ProxyUri.AbsoluteUri)
+                }
+                if ($runningPluginWasLive -and $null -ne $previousLivePackageDirectory) {
+                    $helperArguments += @(
+                        '--sync-live-client',
+                        '--previous-package-directory', $previousLivePackageDirectory
+                    )
+                    Write-Host '当前 Harness 已加载旧代际；安装后将把新的 Web Client 同步到该路径，触发 DSH 内置 HMR。'
+                }
+                & $desktop.NodePath $helperPath @helperArguments
+                if ($LASTEXITCODE -ne 0) {
+                    throw "DSH Desktop 代际安装失败（退出码：$LASTEXITCODE）。$(Get-NetworkFailureHint -NetworkState $networkState)"
+                }
+            } finally {
+                if (Test-Path -LiteralPath $generationTemporaryRoot) {
+                    Remove-Item -LiteralPath $generationTemporaryRoot -Recurse -Force
+                }
+            }
+        }
+    } finally {
+        if ($null -ne $pnpmState) {
+            $env:PATH = $pnpmState.OriginalPath
+            $pnpmTemporaryRoot = [System.IO.Path]::GetFullPath($pnpmState.TemporaryRoot)
+            $temporaryParent = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+            if ($pnpmTemporaryRoot.StartsWith($temporaryParent, [System.StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $pnpmTemporaryRoot)) {
+                Remove-Item -LiteralPath $pnpmTemporaryRoot -Recurse -Force
             }
         }
     }
 } finally {
-    if ($null -ne $pnpmState) {
-        $env:PATH = $pnpmState.OriginalPath
-        $temporaryRoot = [System.IO.Path]::GetFullPath($pnpmState.TemporaryRoot)
-        $temporaryParent = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
-        if ($temporaryRoot.StartsWith($temporaryParent, [System.StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $temporaryRoot)) {
-            Remove-Item -LiteralPath $temporaryRoot -Recurse -Force
-        }
-    }
+    Restore-ChildProcessNetwork -State $networkState
 }
 
 $profileManifest = Read-JsonFile -Path $profileManifestPath
@@ -788,6 +1124,16 @@ Write-Host "安装并验证成功：$PluginName 已注册到 profile '$Profile'�
 
 if ($SkipLiveMount) {
     Write-Host '已按 -SkipLiveMount 跳过运行中热挂载；请完全退出并重新打开 DSH Desktop。'
+    return
+}
+
+if ($generationInstallUsed -and (-not $profileHadPlugin -or -not $runningPluginWasLive)) {
+    if (-not $profileHadPlugin) {
+        Write-Host '首次代际安装已完成；运行中的 DSH 无法替换 profile 链接，本次已跳过热挂载。'
+    } else {
+        Write-Host '插件已完成代际安装，但当前 Harness 未加载旧版本，本次已跳过热挂载。'
+    }
+    Write-Warning '请完全退出并重新打开 DSH Desktop，让代际投影生效；这不是安装失败。'
     return
 }
 

@@ -23,7 +23,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.59') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.60') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -55,13 +55,13 @@ if (manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-input-trigger'] !== 
 const installerPath = resolve(root, 'scripts', 'install.ps1')
 const installer = readFileSync(installerPath, 'utf8')
 const generationInstaller = readFileSync(resolve(root, 'scripts', 'install-generation.mjs'), 'utf8')
-if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "github:$Repository#$Ref"')) {
-  throw new Error('Installer must use the canonical GitHub package spec')
+if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "git+https://github.com/$Repository.git#$Ref"')) {
+  throw new Error('Installer must use the explicit HTTPS GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.59'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.60'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
-if (!generationInstaller.includes("ref: 'v0.2.59'")) {
+if (!generationInstaller.includes("ref: DEFAULT_REF") || !generationInstaller.includes('git+https://github.com/${repository}.git#${ref}')) {
   throw new Error('Generation installer default ref must point at the published stable tag')
 }
 if (!installer.includes('New-DshMarketRouteUri -WebUri $WebUri -Path "/plugins/??$PluginName/client.js"')) {
@@ -89,6 +89,18 @@ for (const phrase of [
   'Get-ClientArtifactHash',
   'Warn-IncompatibleBetterSidebar',
   'dsh-better-sidebar@0.17.1',
+  'ConvertTo-HttpProxyUri',
+  'Get-WinInetProxyUri',
+  'Initialize-ChildProcessNetwork',
+  'Get-NetworkFailureHint',
+  'Get-SafeHttpErrorDetail',
+  'ReadAsStringAsync',
+  'GetResponseStream',
+  '-Proxy',
+  '-Registry',
+  'NPM_CONFIG_FETCH_RETRIES',
+  '首次代际安装或当前插件未 live',
+  '响应体：',
 ]) {
   if (!installer.includes(phrase)) throw new Error(`Installer is missing the live-install seam: ${phrase}`)
 }
@@ -105,8 +117,14 @@ if (!readFileSync(resolve(root, 'README.md'), 'utf8').includes('scripts/install.
   throw new Error('README must document the one-command installer')
 }
 const readme = readFileSync(resolve(root, 'README.md'), 'utf8')
-for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.17.1', '侧边原生对话栏', '铅笔按钮', '卡死']) {
+for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.17.1', '侧边原生对话栏', '铅笔按钮', '卡死', 'README_EN.md', 'README_JA.md', 'README_KO.md']) {
   if (!readme.includes(phrase)) throw new Error(`README is missing the native reference/sidechat note: ${phrase}`)
+}
+for (const relative of ['README_EN.md', 'README_JA.md', 'README_KO.md']) {
+  const translated = readFileSync(resolve(root, relative), 'utf8')
+  for (const phrase of ['scripts/install.ps1', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.2.60']) {
+    if (!translated.includes(phrase)) throw new Error(`${relative} is missing translated install/example content: ${phrase}`)
+  }
 }
 if (process.platform === 'win32') {
   const escapedInstallerPath = installerPath.replace(/'/g, "''")

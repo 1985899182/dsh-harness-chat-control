@@ -51,11 +51,25 @@ The plugin only adds the quote chip, entry points, and session routing. DSH Harn
 Run the current stable installer in Windows PowerShell:
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.59/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.59'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.60/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.60'
 ```
 
-The installer adds the plugin to the DSH Desktop `web` profile and attempts to hot-mount the running Web Client. After the success message, refresh the DSH page with `Ctrl+R`; a desktop restart is not required.
+The installer adds the plugin to the DSH Desktop `web` profile. A first generation install, or an install when the plugin is not live, is staged and clearly asks for a full DSH Desktop restart. Only an upgrade of an already-live plugin synchronizes the Web Client through HMR; refresh the page with `Ctrl+R` afterward.
+
+The source is an explicit HTTPS Git URL, so pnpm does not reinterpret the GitHub shorthand as SSH. The installer first checks existing `HTTP_PROXY`/`HTTPS_PROXY` values and the WinINET proxy, then passes the result to pnpm, git, and node. You can also set it explicitly:
+
+```powershell
+& ([scriptblock]::Create($script)) -Ref 'v0.2.60' -Proxy 'http://127.0.0.1:7897'
+```
+
+For a slow registry, set a registry URL and retry count:
+
+```powershell
+& ([scriptblock]::Create($script)) -Ref 'v0.2.60' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
+```
+
+The command evaluates the downloaded script from an in-memory `scriptblock`, so it does not require changing the PowerShell execution policy. If you save it as a `.ps1` file and run it directly, use `powershell -ExecutionPolicy Bypass -File`.
 
 If the profile already uses Sidebar `0.18.x`, run this compatibility fix first:
 
@@ -67,6 +81,8 @@ $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
 ```
 
 Then run the stable installer again and refresh the page.
+
+If dshmarket returns HTTP 502 or another hot-mount error, the installer prints a token-redacted status and response body and tells you to cold-start DSH; a proxy timeout is not reported as a successful install.
 
 ## Usage
 
@@ -84,7 +100,7 @@ This validates the manifest, loader declarations, PowerShell installer, and Java
 
 ## Release
 
-Current milestone: **`v0.2.59`**, validated against DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1`. Recheck the native Slots and state interfaces after upgrading DSH or the Harness major version.
+Current milestone: **`v0.2.60`**, validated against DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1`. Recheck the native Slots and state interfaces after upgrading DSH or the Harness major version.
 
 ## License
 
