@@ -1,4 +1,4 @@
-# v0.2.57 — DSH Desktop 0.7.2 兼容里程碑
+# v0.2.58 — DSH Desktop 0.7.2 兼容里程碑
 
 状态：**稳定基线 / Milestone**
 
@@ -17,6 +17,7 @@
 - 引用以原生注释胶囊进入主对话和侧边对话，发送前可编辑，正文不被 Markdown 符号污染。
 - 侧边对话沿用 `dsh-better-sidebar@0.17.1` 与 DSH 原生 `InputBar`、模型、权限和发送流程。
 - 安装器使用 DSH Desktop 代际 profile，并在页面刷新后生效；不需要重启桌面程序即可更新 Web Client。
+- 清理旧的手写侧边 textarea、重复 draft/controller、发送拦截器和权限路由，只保留原生组件与必要的宿主路由。
 
 ## 更新边界
 

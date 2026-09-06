@@ -23,7 +23,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.57') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.58') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -54,11 +54,15 @@ if (manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-input-trigger'] !== 
 
 const installerPath = resolve(root, 'scripts', 'install.ps1')
 const installer = readFileSync(installerPath, 'utf8')
+const generationInstaller = readFileSync(resolve(root, 'scripts', 'install-generation.mjs'), 'utf8')
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "github:$Repository#$Ref"')) {
   throw new Error('Installer must use the canonical GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.57'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.58'")) {
   throw new Error('Installer default ref must point at the published stable tag')
+}
+if (!generationInstaller.includes("ref: 'v0.2.58'")) {
+  throw new Error('Generation installer default ref must point at the published stable tag')
 }
 if (!installer.includes('New-DshMarketRouteUri -WebUri $WebUri -Path "/plugins/??$PluginName/client.js"')) {
   throw new Error('Installer must preserve the authenticated Web token while matching the running client artifact')
@@ -169,39 +173,41 @@ const hostSource = readFileSync(resolve(root, 'lib/index.js'), 'utf8')
 if ((clientSource.match(/function referencePreview\(text\)/gu) || []).length !== 1) {
   throw new Error('Reference preview helper must be defined once at client module scope')
 }
-if (!clientSource.includes("!classes.includes('sidechatComposerInput')")) {
-  throw new Error('Sidechat composer selector must not treat the controlled textarea as its parent')
+for (const obsolete of ['createSideChatDraftController', 'createSideChatModelController', 'function SidechatComposer']) {
+  if (clientSource.includes(obsolete)) throw new Error(`Obsolete sidechat implementation remains: ${obsolete}`)
 }
-if (!clientSource.includes('queueObserverFlush') || !clientSource.includes('label.textContent !== preview')) {
-  throw new Error('Sidechat reference bridge must coalesce mutations and update chip text idempotently')
+for (const obsolete of ['SIDECHAT_PERMISSION_ROUTE', 'PERMISSION_ROUTE', 'createSidechatPermissionRoute']) {
+  if (clientSource.includes(obsolete) || hostSource.includes(obsolete)) {
+    throw new Error(`Obsolete sidechat permission route remains: ${obsolete}`)
+  }
 }
-if (!clientSource.includes("const chip = doc.createElement('div')")
-  || !clientSource.includes('chip.append(remove)')
-  || clientSource.includes('row.append(chip, remove)')) {
-  throw new Error('Sidechat reference remove control must stay inside the same capsule')
+if (!clientSource.includes('createSideChatDraftStore')
+  || !clientSource.includes('sidechatReferenceAccessory')
+  || !clientSource.includes('dshhc-sidechat-reference-remove')) {
+  throw new Error('Native sidechat draft/reference store is missing')
 }
-if (!clientSource.includes('[class*="sidechatComposer"][data-dsh-harness-model] [class*="sidechatComposerMeta"]')) {
-  throw new Error('Native sidechat model badge must be hidden when the plugin selector is mounted')
+if (clientSource.includes('row.append(chip, remove)') || clientSource.includes('stopImmediatePropagation')) {
+  throw new Error('Sidechat must not mutate the host composer DOM or intercept its event loop')
 }
 if (!clientSource.includes("const SIDECHAT_MODEL_ROUTE = '/dsh-harness-chat-control/sidechat-model'")) {
   throw new Error('Sidechat model selector route is missing')
 }
-if (!clientSource.includes("const SIDECHAT_PERMISSION_ROUTE = '/dsh-harness-chat-control/sidechat-permission'")) {
-  throw new Error('Sidechat permission selector route is missing')
-}
 if (!clientSource.includes("const SIDECHAT_HISTORY_ROUTE = '/dsh-harness-chat-control/sidechat-history'")) {
   throw new Error('Sidechat history compatibility route is missing')
 }
-if (!clientSource.includes('modelCatalog()') || !clientSource.includes('_2WBGbq_trigger')) {
-  throw new Error('Sidechat model catalog selector is missing')
+if (!clientSource.includes('conversation.input.model')
+  || !clientSource.includes('modelInjected?.directory')
+  || !clientSource.includes('sideModelDirectory')
+  || !clientSource.includes('selectSideModel')) {
+  throw new Error('Sidechat model catalog selector seam is missing')
 }
 if (!clientSource.includes('overlaySnapshot') || !clientSource.includes('useSyncExternalStore')) {
   throw new Error('Sidechat model directory must cache its overlay snapshot for React stability')
 }
-for (const phrase of ['dshhc-sidechat-composer-controls', 'JyqXLa_card', 'JyqXLa_row', 'JyqXLa_tools', 'JyqXLa_modes', 'JyqXLa_trailing', 'JyqXLa_add', 'Q58mYq_trigger', '_2WBGbq_trigger', '_2WBGbq_menu', 'refreshSidechatAfterSend', 'refreshSidechatView', 'updateTab', 'Promise.allSettled']) {
-  if (!clientSource.includes(phrase)) throw new Error(`Native sidechat composer control is missing: ${phrase}`)
+for (const phrase of ['dshhc-sidechat-native-composer', 'dshhc-sidechat-view', 'dshhc-sidechat-native-view [class*="sidechatComposer"]', 'data-composer-card', 'JyqXLa_root', 'refreshSidechatSession', 'updateTab', 'Promise.allSettled']) {
+  if (!clientSource.includes(phrase)) throw new Error(`Native sidechat integration is missing: ${phrase}`)
 }
-for (const phrase of ['createSideChatDraftStore', 'SidechatComposer', 'installSidechatComposer', 'dshhc-sidechat-view', 'dshhc-sidechat-native-view [class*="sidechatComposer"]', "callSidebarApi('sidechat.prompt'", "callSidebarApi('sidechat.cancel'"]) {
+for (const phrase of ['createSideChatDraftStore', 'NativeSidechatComposer', 'installSidechatComposer', 'dshhc-sidechat-view', 'dshhc-sidechat-native-view [class*="sidechatComposer"]', "callSidebarApi('sidechat.prompt'", "callSidebarApi('sidechat.cancel'"]) {
   if (!clientSource.includes(phrase)) throw new Error(`React sidechat composer seam is missing: ${phrase}`)
 }
 for (const phrase of ['NativeSidechatComposer', 'conversation.composer.bar', 'resolveNativeSessionBinding', 'data-dsh-harness-native-inputbar', 'new Proxy(target', 'useNativeSource']) {
@@ -222,12 +228,6 @@ if (!hostSource.includes("const MODEL_ROUTE = '/dsh-harness-chat-control/sidecha
   || !hostSource.includes('selectForNextRequest')
   || !hostSource.includes('trustedRequest')) {
   throw new Error('Host sidechat model route validation/selection seam is missing')
-}
-if (!hostSource.includes("const PERMISSION_ROUTE = '/dsh-harness-chat-control/sidechat-permission'")
-  || !hostSource.includes('permissionPresets')
-  || !hostSource.includes('commands.execute')
-  || !hostSource.includes('permission/preset')) {
-  throw new Error('Host sidechat permission route validation/selection seam is missing')
 }
 if (!hostSource.includes("const HISTORY_ROUTE = '/dsh-harness-chat-control/sidechat-history'")
   || !hostSource.includes('sessionPersistence')

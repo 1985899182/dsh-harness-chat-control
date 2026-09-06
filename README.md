@@ -4,7 +4,7 @@
 
 ## 当前里程碑
 
-**v0.2.57 · DSH Desktop 0.7.2 兼容里程碑（已验证）**
+**v0.2.58 · DSH Desktop 0.7.2 兼容里程碑（已验证）**
 
 这一版本是当前稳定基线，适配矩阵如下。版本号指的是实际运行的宿主/组件版本，不是插件自己的版本号：
 
@@ -31,6 +31,18 @@
 - **侧边栏稳定性**：不再向 Better Sidebar 的受控 textarea 或 composer bar 追加 DOM 节点，也不再捕获原生发送事件。引用胶囊、输入文字、模型菜单和发送状态都由同一个 React composer 管理，避免 React 重排竞争造成整页卡死。
 - **侧边栏入口**：左侧导航底部的“侧边对话”只创建一个空的原生 sidechat 标签页，行为与 Better Sidebar 自带的新建入口一致；用户可在该标签页继续输入、停止、保存或切换线程。
 
+## 代码结构
+
+插件必须通过 DSH 的模块加载器运行，因此浏览器端保持为一个无构建入口文件；文件内部按职责分区，避免再维护一套并行 UI：
+
+- `lib/client.js`：浏览器端入口。依次包含 transcript/重写投影、原生引用芯片、Better Sidebar 侧边会话状态与原生 `InputBar`、主输入框编辑桥接、浮动工具条和 Slot 注册。
+- `lib/index.js`：宿主端入口。只保留模型选择、侧边历史兼容和主会话编辑替换三个受信路由，以及客户端 bundle 刷新逻辑。
+- `scripts/install.ps1`：Windows 桌面版一键安装、热挂载与回退处理。
+- `scripts/install-generation.mjs`：代际 profile 投影和本地/远程包安装的低层 helper。
+- `scripts/validate.mjs`：清单、PowerShell、JavaScript 语法、Slot seam 和宿主路由的静态/加载器回归校验。
+
+旧的手写侧边 textarea、权限/模型菜单、发送拦截器和重复 draft controller 已移除；侧边栏现在只通过 DSH/Better Sidebar 的原生组件和状态源工作。
+
 ## 重要语义
 
 DSH 的底层事件日志仍然是追加式的，但当前版本提供了原生的 surface replacement 语义。点击编辑后，插件只向当前已打开的普通会话临时挂接一次替换标记，再让 DSH 原生 `session.prompt` 发送修改后的文字；这条新事件会替换被编辑用户消息及其后续回答在当前 surface 上的可见范围，然后在同一个会话 ID 中继续生成。旧事件仍保留在追加式日志中用于审计，但不会再创建、切换或堆积新的侧边栏会话。
@@ -48,8 +60,8 @@ DSH 的底层事件日志仍然是追加式的，但当前版本提供了原生�
 DSH Desktop 可以保持打开。在 PowerShell 中执行下面的命令（当前稳定版本）：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.57/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.57'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.58/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.58'
 ```
 
 脚本会自动定位常见的 DSH Desktop 安装目录（包括 `D:\DSH\DSH Desktop` 与 `%LOCALAPPDATA%\Programs\DSH Desktop`），设置正确的 Desktop Harness home，并使用桌面版自带的 generation installer 将 GitHub 插件放入独立代际；这一步比直接写入共享 `node_modules` 更可靠，也能保证 Web Client 在冷启动时发现插件。旧版本留下的共享安装会先被安全移除。
@@ -65,25 +77,25 @@ $script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-co
 如需强制只安装并暂存、不尝试当前进程的热挂载，可加 `-SkipLiveMount`：
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.57' -SkipLiveMount
+& ([scriptblock]::Create($script)) -Ref 'v0.2.58' -SkipLiveMount
 ```
 
 如果日志轮换导致自动发现不到当前页面，可显式传入 DSH 页面地址（必须是本机地址，保留地址栏中的 `token`）：
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.57' -WebUrl 'http://127.0.0.1:65102/?token=你的当前token'
+& ([scriptblock]::Create($script)) -Ref 'v0.2.58' -WebUrl 'http://127.0.0.1:65102/?token=你的当前token'
 ```
 
 如安装目录不在自动探测范围内，或想先只查看将要执行的操作：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.57/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'v0.2.57' -DryRun
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.58/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'v0.2.58' -DryRun
 ```
 
 `-Ref` 可以换成已发布的 Git tag 或提交 SHA，以固定安装版本。通过 `main` 安装时，更新只需在完全退出 DSH Desktop 后重新执行一键命令；若使用 `main`，脚本地址也相应改为 `.../main/scripts/install.ps1`。
 
-为兼容 DSH Desktop 0.7.2 的 GitHub 更新检测，发布版本请使用**轻量 tag**（例如 `git tag v0.2.57`），不要使用带注释的 `git tag -a`。该 Desktop 版本直接比较 `refs/tags/*` 返回值；带注释的 tag 返回 tag object，而不是实际提交，会造成“更新后版本没有变化”的误报。
+为兼容 DSH Desktop 0.7.2 的 GitHub 更新检测，发布版本请使用**轻量 tag**（例如 `git tag v0.2.58`），不要使用带注释的 `git tag -a`。该 Desktop 版本直接比较 `refs/tags/*` 返回值；带注释的 tag 返回 tag object，而不是实际提交，会造成“更新后版本没有变化”的误报。
 
 ### 从本地源码安装
 
@@ -127,6 +139,6 @@ npm test
 - `sidebar.footer.action`
 - `shell.overlay`
 
-原生引用芯片依赖同一版本的 `@deepseek-ai/dsh-client-ui-input-trigger`，并通过 `conversation.input` 的 `slash/input-insert-reference` 事件接入 DSH composer。侧边对话依赖已安装并启用的 `dsh-better-sidebar@0.17.1`，使用其 `targetedOpen`、`stateSubscription` 和 `sidechat.*` API；该版本没有公开侧边 composer 草稿接口，因此插件通过 tab descriptor 包装保留 Better Sidebar 的原生 transcript/view，并从 `conversation.composer.bar` slot 取得 DSH 当前 `InputBar` 组件与 child session 的标准数据源，引用胶囊作为 accessory 传入，不再自绘第二套输入框。模型目录读取 `remote.session.modelCatalog()`，通过插件自己的同源受信路由调用 `llm.resolveCallConfig` 与 Session Agent 的下一请求选择接口；权限通过同源路由执行原生 `/permission` 命令，并在冷恢复线程创建时应用。发送后刷新父会话的子代理目录/会话列表并重新挂载原生 `SideChatView`，由它自己拉取 transcript。未启用 Better Sidebar 时，引用芯片仍可使用，但侧边对话入口会提示缺少该插件。
+原生引用芯片依赖同一版本的 `@deepseek-ai/dsh-client-ui-input-trigger`，并通过 `conversation.input` 的 `slash/input-insert-reference` 事件接入 DSH composer。侧边对话依赖已安装并启用的 `dsh-better-sidebar@0.17.1`，使用其 `targetedOpen`、`stateSubscription` 和 `sidechat.*` API；该版本没有公开侧边 composer 草稿接口，因此插件通过 tab descriptor 包装保留 Better Sidebar 的原生 transcript/view，并从 `conversation.composer.bar` slot 取得 DSH 当前 `InputBar` 组件与 child session 的标准数据源，引用胶囊作为 accessory 传入，不再自绘第二套输入框。模型目录和模型控件直接复用 `conversation.input.model` 原生 slot 的目录/组件，插件只通过同源受信路由调用 `llm.resolveCallConfig` 与 Session Agent 的下一请求选择接口；权限直接复用原生 `InputBar` 的权限 projection，不再维护第二套权限菜单或 `/permission` 路由。发送后刷新父会话的子代理目录/会话列表并重新挂载原生 `SideChatView`，由它自己拉取 transcript。未启用 Better Sidebar 时，引用芯片仍可使用，但侧边对话入口会提示缺少该插件。
 
 桌面端的 Chat snapshot 通过 `useChat` 提供；用户消息从 `node.data.content` 读取，操作行通过 DOM 中的 `data-chat-flow-key` 与原生 `.npc0Lq_actions` 定位；助手回答同时兼容 `assistant-step.data.blocks` 和当前 `turn-tail.data.closing.blocks`（`closing.finalNode` 只用于匹配 `messageId`）。编辑桥接同时接管原生 `inputActions.submit` 与键盘 `keyboard.submit`，因此点击发送和 Enter 都会走同一条替换分支路径。若 DSH Desktop 升级并更改这些 Web Client Slots 或 snapshot contract，请先使用其内置 CLI 导出 profile 配置，并依据新版 Slot contract 调整注册点。
