@@ -4,7 +4,7 @@ param(
     [string]$Profile = 'web',
 
     [ValidatePattern('^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._/-]*$')]
-    [string]$Ref = 'v0.2.56',
+    [string]$Ref = 'v0.2.57',
 
     [string]$DesktopRoot,
 
@@ -400,8 +400,14 @@ function Get-RunningClientPackageTarget {
     if ($null -ne $WebUri) {
         $client = $null
         try {
-            $authority = $WebUri.GetLeftPart([System.UriPartial]::Authority)
-            $clientUri = New-Object -TypeName System.Uri -ArgumentList ("$authority/plugins/??$PluginName/client.js")
+            # The Harness Web endpoint requires the short-lived token carried
+            # by the discovered page URL.  Keeping only the authority makes
+            # this probe return 401, which forces the fallback junction and
+            # can select a newer generation than the long-lived process is
+            # actually serving.  Reuse the same route builder as dshmarket so
+            # the running artifact is matched before projection switches the
+            # profile link.
+            $clientUri = New-DshMarketRouteUri -WebUri $WebUri -Path "/plugins/??$PluginName/client.js"
             $client = [System.Net.Http.HttpClient]::new()
             $bytes = $client.GetByteArrayAsync($clientUri).GetAwaiter().GetResult()
             $text = [System.Text.Encoding]::UTF8.GetString($bytes)
