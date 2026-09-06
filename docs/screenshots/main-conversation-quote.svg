@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">主对话引用示例</title>
+  <desc id="desc">在主对话中把回答作为注释胶囊引用，再输入问题并发送。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#18181b"/>
+      <stop offset="1" stop-color="#101012"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="620" rx="18" fill="url(#bg)"/>
+  <text x="52" y="54" fill="#f4f4f5" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="24" font-weight="600">主对话</text>
+  <text x="52" y="84" fill="#a1a1aa" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="16">引用回答中的内容，问题仍留在当前会话</text>
+
+  <rect x="52" y="116" width="1096" height="208" rx="18" fill="#29292d" stroke="#414148"/>
+  <text x="78" y="158" fill="#f4f4f5" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="20">这是主对话中的回答内容。</text>
+  <text x="78" y="194" fill="#d4d4d8" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="18">选中一段文字，或点击回答下方的“引用”。</text>
+  <text x="78" y="230" fill="#d4d4d8" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="18">引用会以注释胶囊保存在输入框中，不会直接污染正文。</text>
+  <rect x="78" y="258" width="174" height="36" rx="18" fill="#3d3d44"/>
+  <text x="98" y="282" fill="#c4b5fd" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="16">回答操作</text>
+
+  <g transform="translate(78 354)" fill="#b5b5bd" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="17">
+    <circle cx="12" cy="0" r="11" fill="none" stroke="#a1a1aa" stroke-width="2"/>
+    <text x="34" y="6">复制</text>
+    <text x="104" y="6" fill="#f4f4f5">引用</text>
+    <text x="174" y="6">侧栏问</text>
+  </g>
+
+  <rect x="52" y="404" width="1096" height="154" rx="20" fill="#2b2b30" stroke="#55555e"/>
+  <rect x="76" y="424" width="176" height="34" rx="17" fill="#3c5c9b"/>
+  <text x="94" y="447" fill="#e5edff" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="16">▤ 1 条注释 · 引用</text>
+  <text x="76" y="493" fill="#f4f4f5" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="19">请解释这段回答的关键点</text>
+  <text x="76" y="536" fill="#b7b7c0" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="15">Workspace Write</text>
+  <text x="826" y="536" fill="#d4d4d8" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="16">DeepSeek-V4-Flash · High⌄</text>
+  <circle cx="1096" cy="520" r="26" fill="#6599ff"/>
+  <path d="M1096 533V507M1086 517l10-10 10 10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

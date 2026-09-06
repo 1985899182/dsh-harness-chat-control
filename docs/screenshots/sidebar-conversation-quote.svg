@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="650" viewBox="0 0 1000 650" role="img" aria-labelledby="title desc">
+  <title id="title">侧边栏对话引用示例</title>
+  <desc id="desc">点击侧栏问后，在 Better Sidebar 原生对话栏中保留引用胶囊、选择模型并发送。</desc>
+  <rect width="1000" height="650" rx="18" fill="#151517"/>
+
+  <rect x="24" y="24" width="430" height="602" rx="14" fill="#1d1d20" stroke="#34343a"/>
+  <text x="52" y="66" fill="#a1a1aa" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="16">主对话</text>
+  <rect x="52" y="96" width="350" height="116" rx="16" fill="#29292d"/>
+  <text x="74" y="137" fill="#f4f4f5" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="17">回答内容仍在主会话中。</text>
+  <text x="74" y="171" fill="#c4c4cc" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="15">点击“侧栏问”开启独立追问。</text>
+  <text x="74" y="244" fill="#a1a1aa" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="15">主对话不会被侧边问题覆盖</text>
+
+  <rect x="476" y="24" width="500" height="602" rx="14" fill="#202023" stroke="#56565f"/>
+  <rect x="476" y="24" width="500" height="56" rx="14" fill="#29292d"/>
+  <rect x="492" y="34" width="132" height="36" rx="6" fill="#45454b"/>
+  <text x="508" y="58" fill="#f4f4f5" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="16">⊕ 新对话</text>
+  <text x="646" y="59" fill="#a1a1aa" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="24">＋</text>
+  <text x="510" y="120" fill="#f4f4f5" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="20" font-weight="600">侧边栏对话</text>
+  <text x="510" y="151" fill="#a1a1aa" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="15">引用只作为当前 child session 的上下文</text>
+
+  <rect x="500" y="360" width="452" height="190" rx="18" fill="#2b2b30" stroke="#55555e"/>
+  <rect x="520" y="380" width="174" height="34" rx="17" fill="#3c5c9b"/>
+  <text x="537" y="403" fill="#e5edff" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="15">▤ 1 条注释 · 引用</text>
+  <text x="520" y="448" fill="#f4f4f5" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="17">请指出这段内容最重要的结论</text>
+  <text x="520" y="505" fill="#c4c4cc" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="15">Workspace Write⌄</text>
+  <text x="716" y="505" fill="#d4d4d8" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="15">DeepSeek-V4-Flash⌄</text>
+  <circle cx="918" cy="504" r="25" fill="#6599ff"/>
+  <path d="M918 517V491M908 501l10-10 10 10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="510" y="584" fill="#8f8f99" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="14">原生 InputBar：可编辑文字、切换模型后再发送</text>
+</svg>
