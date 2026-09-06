@@ -23,7 +23,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.51') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.52') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -57,7 +57,7 @@ const installer = readFileSync(installerPath, 'utf8')
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "github:$Repository#$Ref"')) {
   throw new Error('Installer must use the canonical GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.51'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.52'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!installer.includes('dsh.profile.bundles')) {
@@ -269,7 +269,7 @@ const hostSession = {
   surface: { nodes: [0, 1] },
   header: { origin: 'user' },
   append(type, data, options) {
-    const event = { seq: this.events.length, type, data }
+    const event = { seq: this.events.length, type, data, ...(options || {}) }
     this.events.push(event)
     hostAppends.push({ type, data, options })
     return event
@@ -281,7 +281,7 @@ const coldSession = {
   surface: { nodes: [0, 1] },
   header: { origin: 'user' },
   append(type, data, options) {
-    const event = { seq: this.events.length, type, data }
+    const event = { seq: this.events.length, type, data, ...(options || {}) }
     this.events.push(event)
     hostAppends.push({ type, data, options, cold: true })
     return event
@@ -349,6 +349,34 @@ if (editAppend?.options?.surfaceOp?.op !== 'replace'
   || editAppend.options.surfaceOp.end !== 1
   || JSON.stringify(editAppend.options.sourceEventSeqs) !== JSON.stringify([0, 1])) {
   throw new Error(`Edited prompt was appended instead of replacing the original surface: ${JSON.stringify(editAppend)}`)
+}
+
+// Native Chat deliberately keeps the append-origin transcript row as the
+// durable audit history, so a second click on that same row still reports its
+// original anchor (0) even though the model surface now contains replacement
+// node 2.  The host must follow that replacement lineage instead of returning
+// the misleading message-not-found response.
+hostSession.surface.nodes = [2]
+const secondEditResponse = hostResponse()
+await sessionEditHandler(hostRequest({
+  sessionId: 'host-session',
+  startSeq: 0,
+  targetText: '原消息',
+  text: '再次修改后的消息'
+}), secondEditResponse)
+if (secondEditResponse.status !== 200 || secondEditResponse.body?.ok !== true) {
+  throw new Error(`A transcript row shadowed by a prior replacement could not be edited again: ${JSON.stringify(secondEditResponse)}`)
+}
+hostSession.append('user/message', {
+  source: { kind: 'user' },
+  content: [{ type: 'text', text: '再次修改后的消息' }]
+}, { surfaceOp: 'append' })
+const secondEditAppend = hostAppends.at(-1)
+if (secondEditAppend?.options?.surfaceOp?.op !== 'replace'
+  || secondEditAppend.options.surfaceOp.start !== 2
+  || secondEditAppend.options.surfaceOp.end !== 2
+  || JSON.stringify(secondEditAppend.options.sourceEventSeqs) !== JSON.stringify([2])) {
+  throw new Error(`The second edit did not follow the current replacement node: ${JSON.stringify(secondEditAppend)}`)
 }
 
 const coldResponse = hostResponse()
