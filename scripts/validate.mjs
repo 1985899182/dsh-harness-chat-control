@@ -23,7 +23,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.52') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.53') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -57,7 +57,7 @@ const installer = readFileSync(installerPath, 'utf8')
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "github:$Repository#$Ref"')) {
   throw new Error('Installer must use the canonical GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.52'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.53'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!installer.includes('dsh.profile.bundles')) {
@@ -620,12 +620,19 @@ if (tailQuoteView === null) throw new Error('Assistant action cannot read the cu
 
 let nativeDraft = '修改后的消息'
 let nativeSubmitCalls = 0
-const nativeInputActions = {
-  setDraft: (text) => { nativeDraft = text },
-  submit: () => {
+const nativeKeyboard = {
+  submit: (...args) => {
     nativeSubmitCalls += 1
     sourcePrompts.push([{ type: 'text', text: nativeDraft.trim() }])
+    return args.length
   }
+}
+const nativeInputActions = {
+  setDraft: (text) => { nativeDraft = text },
+  // New DSH builds expose inputActions.submit as a thin delegate to the
+  // keyboard face.  Keep that relationship in the fixture so a regression
+  // cannot silently swallow the delegated native submit.
+  submit: (...args) => nativeKeyboard.submit(...args)
 }
 const revisionProps = revisionRegistration.config.inject('desktop-session-1')
 let normalizedLegacyDraft = ''
@@ -655,7 +662,8 @@ const revisionView = revisionRegistration.component({
   ...revisionProps,
   useChat: (select) => select(desktopChatSnapshot),
   useInput: (select) => select({ draft: nativeDraft }),
-  inputActions: nativeInputActions
+  inputActions: nativeInputActions,
+  keyboard: nativeKeyboard
 })
 if (revisionView !== null) throw new Error('Revision dock must not render a standalone edit card')
 if (nativeDraft !== '请把答案改短一些') throw new Error('Edit request did not seed the native composer draft')
@@ -670,6 +678,7 @@ if (editRequests[0]?.url !== '/dsh-harness-chat-control/session-edit'
 }
 if (nativeSubmitCalls !== 1) throw new Error('Edited draft did not invoke the native composer submit action')
 if (sourcePrompts[0]?.[0]?.text !== '修改后的消息') throw new Error('Edited draft was not sent through the original session')
+if (nativeDraft !== '修改后的消息') throw new Error('Revision dock cleared the native draft before DSH accepted the send')
 if (revisionProps.revisionStore.getSnapshot().pending !== null) throw new Error('Revision state was not cleared after replacement send')
 
 const shellProps = shellRegistration.config.inject()
