@@ -4,7 +4,7 @@ param(
     [string]$Profile = 'web',
 
     [ValidatePattern('^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._/-]*$')]
-    [string]$Ref = 'v0.2.58',
+    [string]$Ref = 'v0.2.59',
 
     [string]$DesktopRoot,
 
@@ -172,6 +172,42 @@ function Read-JsonFile {
         throw "缺少预期文件：$Path"
     }
     return Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+}
+
+function Get-ProfileDependencyVersion {
+    param(
+        [object]$ProfileManifest,
+        [string]$PackageName
+    )
+
+    if ($null -eq $ProfileManifest -or $null -eq $ProfileManifest.dependencies) {
+        return $null
+    }
+    $property = $ProfileManifest.dependencies.PSObject.Properties[$PackageName]
+    if ($null -eq $property -or $null -eq $property.Value) {
+        return $null
+    }
+    return [string]$property.Value
+}
+
+function Warn-IncompatibleBetterSidebar {
+    param(
+        [string]$ProfileManifestPath,
+        [string]$HarnessVersion
+    )
+
+    if (-not (Test-Path -LiteralPath $ProfileManifestPath -PathType Leaf)) {
+        return
+    }
+    try {
+        $manifest = Read-JsonFile -Path $ProfileManifestPath
+        $sidebarVersion = Get-ProfileDependencyVersion -ProfileManifest $manifest -PackageName 'dsh-better-sidebar'
+        if ($HarnessVersion -eq $SupportedHarnessVersion -and $sidebarVersion -match '^0\.18(?:\.|$)') {
+            Write-Warning "当前 profile 使用 dsh-better-sidebar@$sidebarVersion，但 DSH Harness $HarnessVersion 只兼容 0.17.1；请先执行：dsh plugin --profile web add --save-exact dsh-better-sidebar@0.17.1"
+        }
+    } catch {
+        Write-Warning "无法读取 $ProfileManifestPath 来检查 dsh-better-sidebar 版本；安装后请确认使用 0.17.1。"
+    }
 }
 
 function ConvertTo-LoopbackWebUri {
@@ -619,6 +655,7 @@ $env:DSH_HOME = Join-Path $env:APPDATA 'dsh-desktop\harness'
 $packageSpec = "github:$Repository#$Ref"
 $profileRoot = Join-Path $env:DSH_HOME (Join-Path 'profiles' $Profile)
 $profileManifestPath = Join-Path $env:DSH_HOME (Join-Path 'profiles' (Join-Path $Profile 'package.json'))
+Warn-IncompatibleBetterSidebar -ProfileManifestPath $profileManifestPath -HarnessVersion ([string]$dshManifest.version)
 
 Write-Host "DSH Desktop：$($desktop.Root)"
 Write-Host "Harness home：$env:DSH_HOME"

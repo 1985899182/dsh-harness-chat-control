@@ -4,7 +4,7 @@
 
 ## 当前里程碑
 
-**v0.2.58 · DSH Desktop 0.7.2 兼容里程碑（已验证）**
+**v0.2.59 · DSH Desktop 0.7.2 兼容里程碑（已验证）**
 
 这一版本是当前稳定基线，适配矩阵如下。版本号指的是实际运行的宿主/组件版本，不是插件自己的版本号：
 
@@ -17,6 +17,8 @@
 | pnpm | `10.x`（桌面 profile 首选；`11.x` 可用） |
 
 已在本机 Desktop 的 `web` profile 完成冷启动、网页刷新、原生输入框编辑重发、原位覆盖渲染、引用胶囊和侧边对话回归。未在 `DSH Desktop >0.7.2` 或其他 Harness 主版本上承诺兼容；升级 DSH 后应先按本表重新验证 Slots 和 snapshot contract。
+
+> **版本组合必须固定**：DSH Desktop 0.7.2 的 Harness `0.1.2-alpha.1` 请使用 `dsh-better-sidebar@0.17.1`。`dsh-better-sidebar@0.18.x` 面向 `0.1.2-rc.1+`，会读取 alpha.1 不提供的 `ctx.connection.state.getSnapshot()`，从而在点击“新对话”时出现 `Cannot read properties of undefined (reading 'getSnapshot')`。本版本还提供兼容桥，将 alpha.1 的 `connection.generation` 映射为只读状态源；安装器会检查并提示不匹配的 Sidebar 版本。
 
 ## 功能
 
@@ -60,8 +62,8 @@ DSH 的底层事件日志仍然是追加式的，但当前版本提供了原生�
 DSH Desktop 可以保持打开。在 PowerShell 中执行下面的命令（当前稳定版本）：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.58/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.58'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.59/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.59'
 ```
 
 脚本会自动定位常见的 DSH Desktop 安装目录（包括 `D:\DSH\DSH Desktop` 与 `%LOCALAPPDATA%\Programs\DSH Desktop`），设置正确的 Desktop Harness home，并使用桌面版自带的 generation installer 将 GitHub 插件放入独立代际；这一步比直接写入共享 `node_modules` 更可靠，也能保证 Web Client 在冷启动时发现插件。旧版本留下的共享安装会先被安全移除。
@@ -70,6 +72,17 @@ $script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-co
 
 如果当前 DSH Desktop 没有代际安装器，脚本会自动回退到内置 CLI 命令 `dsh plugin --profile web add --save-exact`；不需要手动执行两套安装命令。
 
+如果安装器检测到 profile 已经是 `dsh-better-sidebar@0.18.x`，请先执行下面的兼容修复，再安装本插件；这只替换 Sidebar 自身的代际，不会删除工作区或会话数据：
+
+```powershell
+$desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
+$desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
+$env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact dsh-better-sidebar@0.17.1
+```
+
+命令结束后重新运行上面的本插件安装命令；若 DSH 页面仍显示旧错误，刷新页面，必要时完全退出并重新打开一次，让 Desktop 重投影 Sidebar 代际。
+
 随后它会读取 `%APPDATA%\dsh-desktop\harness\profiles\web\package.json`，确认 `dependencies`、`dsh.profile.bundles` 和代际投影都已包含 `dsh-harness-chat-control`。如果 profile 之前由 pnpm 10 建立、而当前 PATH 是 pnpm 11，安装器会临时通过 Corepack 使用 profile 记录的 pnpm 主版本，不会强制重装整个 profile。看到“已通过运行中的 dshmarket 热挂载”后只刷新页面；看到“安全暂存/回退到重启”提示时，才需要完全退出并重新打开 DSH Desktop。
 
 安全边界：如果要更新的版本已经在当前 Harness 进程中运行，脚本不会重复挂载同名 Loader（这样会导致两个插件实例争用状态），而是只同步 `./client` 文件到该进程已经监视的路径，交给 DSH 内置 HMR 更新；host patch 仍保留在新代际中，下一次启动自然切换。只有在无法解析旧代际路径、dshmarket 不可用、Web 地址过期或热挂载验证失败时，安装才会保留在 profile 中并回退到重启路径；不会把“已暂存”误报成“已热启动”。
@@ -77,25 +90,25 @@ $script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-co
 如需强制只安装并暂存、不尝试当前进程的热挂载，可加 `-SkipLiveMount`：
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.58' -SkipLiveMount
+& ([scriptblock]::Create($script)) -Ref 'v0.2.59' -SkipLiveMount
 ```
 
 如果日志轮换导致自动发现不到当前页面，可显式传入 DSH 页面地址（必须是本机地址，保留地址栏中的 `token`）：
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.58' -WebUrl 'http://127.0.0.1:65102/?token=你的当前token'
+& ([scriptblock]::Create($script)) -Ref 'v0.2.59' -WebUrl 'http://127.0.0.1:65102/?token=你的当前token'
 ```
 
 如安装目录不在自动探测范围内，或想先只查看将要执行的操作：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.58/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'v0.2.58' -DryRun
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.59/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'v0.2.59' -DryRun
 ```
 
 `-Ref` 可以换成已发布的 Git tag 或提交 SHA，以固定安装版本。通过 `main` 安装时，更新只需在完全退出 DSH Desktop 后重新执行一键命令；若使用 `main`，脚本地址也相应改为 `.../main/scripts/install.ps1`。
 
-为兼容 DSH Desktop 0.7.2 的 GitHub 更新检测，发布版本请使用**轻量 tag**（例如 `git tag v0.2.58`），不要使用带注释的 `git tag -a`。该 Desktop 版本直接比较 `refs/tags/*` 返回值；带注释的 tag 返回 tag object，而不是实际提交，会造成“更新后版本没有变化”的误报。
+为兼容 DSH Desktop 0.7.2 的 GitHub 更新检测，发布版本请使用**轻量 tag**（例如 `git tag v0.2.59`），不要使用带注释的 `git tag -a`。该 Desktop 版本直接比较 `refs/tags/*` 返回值；带注释的 tag 返回 tag object，而不是实际提交，会造成“更新后版本没有变化”的误报。
 
 ### 从本地源码安装
 

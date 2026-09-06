@@ -23,7 +23,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.58') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.59') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -58,10 +58,10 @@ const generationInstaller = readFileSync(resolve(root, 'scripts', 'install-gener
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "github:$Repository#$Ref"')) {
   throw new Error('Installer must use the canonical GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.58'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.59'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
-if (!generationInstaller.includes("ref: 'v0.2.58'")) {
+if (!generationInstaller.includes("ref: 'v0.2.59'")) {
   throw new Error('Generation installer default ref must point at the published stable tag')
 }
 if (!installer.includes('New-DshMarketRouteUri -WebUri $WebUri -Path "/plugins/??$PluginName/client.js"')) {
@@ -87,6 +87,8 @@ for (const phrase of [
   '无需重启 DSH Desktop',
   'Normalize-ClientArtifactText',
   'Get-ClientArtifactHash',
+  'Warn-IncompatibleBetterSidebar',
+  'dsh-better-sidebar@0.17.1',
 ]) {
   if (!installer.includes(phrase)) throw new Error(`Installer is missing the live-install seam: ${phrase}`)
 }
@@ -204,7 +206,7 @@ if (!clientSource.includes('conversation.input.model')
 if (!clientSource.includes('overlaySnapshot') || !clientSource.includes('useSyncExternalStore')) {
   throw new Error('Sidechat model directory must cache its overlay snapshot for React stability')
 }
-for (const phrase of ['dshhc-sidechat-native-composer', 'dshhc-sidechat-view', 'dshhc-sidechat-native-view [class*="sidechatComposer"]', 'data-composer-card', 'JyqXLa_root', 'refreshSidechatSession', 'updateTab', 'Promise.allSettled']) {
+for (const phrase of ['dshhc-sidechat-native-composer', 'dshhc-sidechat-view', 'dshhc-sidechat-native-view [class*="sidechatComposer"]', 'data-composer-card', 'JyqXLa_root', 'refreshSidechatSession', 'updateTab', 'Promise.allSettled', 'CONNECTION_STATE_BRIDGE', 'installConnectionStateBridge', 'connection.generation']) {
   if (!clientSource.includes(phrase)) throw new Error(`Native sidechat integration is missing: ${phrase}`)
 }
 for (const phrase of ['createSideChatDraftStore', 'NativeSidechatComposer', 'installSidechatComposer', 'dshhc-sidechat-view', 'dshhc-sidechat-native-view [class*="sidechatComposer"]', "callSidebarApi('sidechat.prompt'", "callSidebarApi('sidechat.cancel'"]) {
