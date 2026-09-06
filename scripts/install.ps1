@@ -4,7 +4,7 @@ param(
     [string]$Profile = 'web',
 
     [ValidatePattern('^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._/-]*$')]
-    [string]$Ref = 'v0.2.55',
+    [string]$Ref = 'v0.2.56',
 
     [string]$DesktopRoot,
 
@@ -347,6 +347,43 @@ function Get-ProfilePackageTarget {
     }
 }
 
+function Normalize-ClientArtifactText {
+    param(
+        [string]$Text
+    )
+
+    if ($null -eq $Text) {
+        return ''
+    }
+
+    # The /plugins route emits a source-map trailer and a final semicolon,
+    # while the package file may use either LF or CRLF and has neither.  The
+    # loader hashes executable bytes, so normalize these transport-only
+    # differences before matching the running artifact to a generation.
+    $normalized = $Text.Replace("`r`n", "`n").Replace("`r", "`n")
+    $normalized = [regex]::Replace($normalized, '(?ms)\r?\n?//# sourceMappingURL=.*?\z', '')
+    $normalized = $normalized.Trim()
+    if ($normalized.EndsWith(';')) {
+        $normalized = $normalized.Substring(0, $normalized.Length - 1).TrimEnd()
+    }
+    return $normalized
+}
+
+function Get-ClientArtifactHash {
+    param(
+        [string]$Text
+    )
+
+    $normalized = Normalize-ClientArtifactText -Text $Text
+    $hashBytes = [System.Text.Encoding]::UTF8.GetBytes($normalized)
+    $digest = [System.Security.Cryptography.SHA1]::Create()
+    try {
+        return (($digest.ComputeHash($hashBytes) | ForEach-Object ToString x2) -join '').ToLowerInvariant()
+    } finally {
+        $digest.Dispose()
+    }
+}
+
 function Get-RunningClientPackageTarget {
     param(
         [System.Uri]$WebUri,
@@ -368,16 +405,7 @@ function Get-RunningClientPackageTarget {
             $client = [System.Net.Http.HttpClient]::new()
             $bytes = $client.GetByteArrayAsync($clientUri).GetAwaiter().GetResult()
             $text = [System.Text.Encoding]::UTF8.GetString($bytes)
-            # The bundle route appends a request-specific source-map trailer;
-            # remove it before comparing with the on-disk client artifact.
-            $text = [regex]::Replace($text, '(?ms)\r?\n?//# sourceMappingURL=.*?\z', '')
-            $hashBytes = [System.Text.Encoding]::UTF8.GetBytes($text)
-            $digest = [System.Security.Cryptography.SHA1]::Create()
-            try {
-                $runningHash = (($digest.ComputeHash($hashBytes) | ForEach-Object ToString x2) -join '').ToLowerInvariant()
-            } finally {
-                $digest.Dispose()
-            }
+            $runningHash = Get-ClientArtifactHash -Text $text
         } catch {
             $runningHash = $null
         } finally {
@@ -398,13 +426,7 @@ function Get-RunningClientPackageTarget {
                 }
                 try {
                     $candidateText = [System.IO.File]::ReadAllText($clientPath, [System.Text.Encoding]::UTF8)
-                    $candidateBytes = [System.Text.Encoding]::UTF8.GetBytes($candidateText)
-                    $candidateDigest = [System.Security.Cryptography.SHA1]::Create()
-                    try {
-                        $candidateHash = (($candidateDigest.ComputeHash($candidateBytes) | ForEach-Object ToString x2) -join '').ToLowerInvariant()
-                    } finally {
-                        $candidateDigest.Dispose()
-                    }
+                    $candidateHash = Get-ClientArtifactHash -Text $candidateText
                     if ($candidateHash -eq $runningHash) {
                         return [System.IO.Path]::GetFullPath((Join-Path $generation.FullName (Join-Path 'node_modules' $PluginName)))
                     }
