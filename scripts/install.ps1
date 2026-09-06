@@ -4,7 +4,7 @@ param(
     [string]$Profile = 'web',
 
     [ValidatePattern('^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._/-]*$')]
-    [string]$Ref = 'v0.2.48',
+    [string]$Ref = 'v0.2.49',
 
     [string]$DesktopRoot,
 
@@ -347,6 +347,87 @@ function Get-ProfilePackageTarget {
     }
 }
 
+function Get-RunningClientPackageTarget {
+    param(
+        [System.Uri]$WebUri,
+        [string]$ProfileRoot,
+        [string]$FallbackTarget
+    )
+
+    # The profile junction can be newer than the long-lived Harness process:
+    # an earlier install may have started the process from an older generation
+    # and then projected a newer one for the next launch.  Ask the running Web
+    # server for the exact client artifact it serves, then match those bytes to
+    # the immutable live generations before projection changes the junction.
+    $runningHash = $null
+    if ($null -ne $WebUri) {
+        $client = $null
+        try {
+            $authority = $WebUri.GetLeftPart([System.UriPartial]::Authority)
+            $clientUri = New-Object -TypeName System.Uri -ArgumentList ("$authority/plugins/??$PluginName/client.js")
+            $client = [System.Net.Http.HttpClient]::new()
+            $bytes = $client.GetByteArrayAsync($clientUri).GetAwaiter().GetResult()
+            $text = [System.Text.Encoding]::UTF8.GetString($bytes)
+            # The bundle route appends a request-specific source-map trailer;
+            # remove it before comparing with the on-disk client artifact.
+            $text = [regex]::Replace($text, '(?ms)\r?\n?//# sourceMappingURL=.*?\z', '')
+            $hashBytes = [System.Text.Encoding]::UTF8.GetBytes($text)
+            $digest = [System.Security.Cryptography.SHA1]::Create()
+            try {
+                $runningHash = (($digest.ComputeHash($hashBytes) | ForEach-Object ToString x2) -join '').ToLowerInvariant()
+            } finally {
+                $digest.Dispose()
+            }
+        } catch {
+            $runningHash = $null
+        } finally {
+            if ($null -ne $client) {
+                $client.Dispose()
+            }
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($runningHash)) {
+        $liveRoot = Join-Path $env:DSH_HOME 'profiles\.generations\live'
+        if (Test-Path -LiteralPath $liveRoot -PathType Container) {
+            $generations = Get-ChildItem -LiteralPath $liveRoot -Directory -Filter "$PluginName+*" -ErrorAction SilentlyContinue
+            foreach ($generation in $generations) {
+                $clientPath = Join-Path $generation.FullName (Join-Path 'node_modules' (Join-Path $PluginName 'lib\client.js'))
+                if (-not (Test-Path -LiteralPath $clientPath -PathType Leaf)) {
+                    continue
+                }
+                try {
+                    $candidateText = [System.IO.File]::ReadAllText($clientPath, [System.Text.Encoding]::UTF8)
+                    $candidateBytes = [System.Text.Encoding]::UTF8.GetBytes($candidateText)
+                    $candidateDigest = [System.Security.Cryptography.SHA1]::Create()
+                    try {
+                        $candidateHash = (($candidateDigest.ComputeHash($candidateBytes) | ForEach-Object ToString x2) -join '').ToLowerInvariant()
+                    } finally {
+                        $candidateDigest.Dispose()
+                    }
+                    if ($candidateHash -eq $runningHash) {
+                        return [System.IO.Path]::GetFullPath((Join-Path $generation.FullName (Join-Path 'node_modules' $PluginName)))
+                    }
+                } catch {
+                    # An incomplete/removed generation is not a valid match;
+                    # continue checking the remaining immutable generations.
+                }
+            }
+        }
+    }
+
+    # Keep the pre-install junction as a safe fallback for hosts that do not
+    # expose the bundle route or while the Web endpoint is starting up.
+    if (-not [string]::IsNullOrWhiteSpace($FallbackTarget)) {
+        try {
+            return [System.IO.Path]::GetFullPath($FallbackTarget)
+        } catch {
+            return $null
+        }
+    }
+    return $null
+}
+
 function Invoke-DshMarketHotMount {
     param(
         [System.Uri]$WebUri,
@@ -555,6 +636,18 @@ if (-not $SkipLiveMount) {
     $runningEndpoint = Get-RunningDshWebEndpoint -RequestedUrl $WebUrl -ProfileName $Profile
     if ($null -ne $runningEndpoint) {
         $runningPluginWasLive = (Get-ActivationState -StatusData $runningEndpoint.Data) -eq 'live'
+        if ($profileHadPlugin -and $runningPluginWasLive) {
+            $detectedLivePackageDirectory = Get-RunningClientPackageTarget `
+                -WebUri $runningEndpoint.Uri `
+                -ProfileRoot $profileRoot `
+                -FallbackTarget $previousLivePackageDirectory
+            if ($null -ne $detectedLivePackageDirectory) {
+                if ($detectedLivePackageDirectory -ne $previousLivePackageDirectory) {
+                    Write-Host "已按运行中的 Web Client 内容校正代际路径：$detectedLivePackageDirectory"
+                }
+                $previousLivePackageDirectory = $detectedLivePackageDirectory
+            }
+        }
         Write-Host '已发现正在运行的 DSH Web 与 dshmarket；安装后将尝试热挂载。'
     } else {
         Write-Host '未发现可用的运行中 dshmarket；安装会先安全暂存，随后按需提示重启。'
