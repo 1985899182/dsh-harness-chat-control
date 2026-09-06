@@ -22,7 +22,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.46') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.47') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -56,7 +56,7 @@ const installer = readFileSync(installerPath, 'utf8')
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "github:$Repository#$Ref"')) {
   throw new Error('Installer must use the canonical GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.46'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.47'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!installer.includes('dsh.profile.bundles')) {
@@ -249,9 +249,10 @@ const fakeSlots = {
   }
 }
 
+let fakeInputSnapshot = { draft: '已有草稿', draftRev: 7 }
 const fakeInput = {
   state: {
-    getSnapshot: () => ({ draft: '已有草稿', draftRev: 7 })
+    getSnapshot: () => fakeInputSnapshot
   }
 }
 const fakeConversation = {
@@ -421,6 +422,30 @@ if (!serialized.includes('【引用开始】') || !serialized.includes('【引�
 }
 if (registeredSources[0].codec.clipboardText(reference.ref) !== '@[1 条注释](dsh-chat-control:' + JSON.parse(reference.ref).id + ')') {
   throw new Error('Reference clipboard projection is not stable')
+}
+
+// A native chip is one character in DSH's detect projection but expands to a
+// longer clipboard token in `input.draft`.  A second quote must therefore use
+// the logical detect offset, otherwise the host rejects the span and a legacy
+// bridge can leak the clipboard token into the user message.
+const firstClipboard = registeredSources[0].codec.clipboardText(reference.ref)
+fakeInputSnapshot = {
+  draft: `已有草稿 ${firstClipboard}`,
+  draftRev: 8,
+  occurrences: [{ offset: 5, length: firstClipboard.length }]
+}
+const secondQuoteView = quoteRegistration.component({
+  ...quoteProps,
+  messageId: 'desktop-answer-1',
+  useChat: (select) => select(desktopChatSnapshot),
+  useInput: (select) => select({ draft: '' }),
+  inputActions: { setDraft: () => {} },
+  openSideChat: (...args) => sideCalls.push(args)
+})
+secondQuoteView.args[2].args[1].onClick({})
+const secondInserted = insertedReferences.at(-1)
+if (secondInserted?.span?.start !== 6 || secondInserted?.span?.end !== 6 || secondInserted?.span?.draftRev !== 8) {
+  throw new Error(`Reference insertion did not fold clipboard offsets to the native detect projection: ${JSON.stringify(secondInserted)}`)
 }
 
 const tailQuoteView = quoteRegistration.component({
