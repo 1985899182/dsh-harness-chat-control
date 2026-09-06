@@ -1,7 +1,7 @@
 {
   "name": "dsh-harness-chat-control",
-  "version": "0.2.60",
-  "description": "ChatGPT-style stop, revise, native annotation-chip quote, and a Better Sidebar sidechat composer rendered by the installed DeepSeek Harness InputBar.",
+  "version": "0.2.61",
+  "description": "ChatGPT-style stop, revise, native annotation-chip quote, and an owned Better Sidebar 0.17.1 sidechat with reference-aware follow-up questions.",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
@@ -19,8 +19,14 @@
   "files": [
     "lib",
     "scripts",
+    "vendor",
     "cordis.patch.yml",
     "README.md",
+    "README_EN.md",
+    "README_JA.md",
+    "README_KO.md",
+    "MILESTONE.md",
+    "docs",
     "LICENSE"
   ],
   "scripts": {
@@ -38,20 +44,37 @@
         "@deepseek-ai/dsh-client-ui-layout",
         "@deepseek-ai/dsh-client-ui-sidebar",
         "@deepseek-ai/dsh-client-ui-conversation",
-        "@deepseek-ai/dsh-client-ui-input-trigger"
+        "@deepseek-ai/dsh-client-ui-input-trigger",
+        "@deepseek-ai/dsh-client-ui-model-selection",
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-modules",
+        "dsh-better-sidebar"
       ]
     }
   },
+  "dependencies": {
+    "dsh-better-sidebar": "0.17.1"
+  },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-api-session-controller": "^0.1.2-alpha.1",
-    "@deepseek-ai/dsh-client-ui-chat": "^0.1.2-alpha.1",
-    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.2-alpha.1",
-    "@deepseek-ai/dsh-client-ui-input-trigger": "^0.1.2-alpha.1",
-    "@deepseek-ai/dsh-client-ui-layout": "^0.1.2-alpha.1",
-    "@deepseek-ai/dsh-client-ui-sidebar": "^0.1.2-alpha.1",
-    "@deepseek-ai/dsh-client-ui-session": "^0.1.2-alpha.1",
-    "react": "^18.2.0"
+    "@deepseek-ai/dsh-api-session-controller": "0.1.2-alpha.1",
+    "@deepseek-ai/dsh-client-ui-chat": "0.1.2-alpha.1",
+    "@deepseek-ai/dsh-client-ui-conversation": "0.1.2-alpha.1",
+    "@deepseek-ai/dsh-client-ui-input-trigger": "0.1.2-alpha.1",
+    "@deepseek-ai/dsh-client-ui-model-selection": "0.1.2-alpha.1",
+    "@deepseek-ai/dsh-client-locale": "0.1.2-alpha.1",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.2-alpha.1",
+    "@deepseek-ai/dsh-client-modules": "0.1.2-alpha.1",
+    "@deepseek-ai/dsh-client-ui-layout": "0.1.2-alpha.1",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.1.2-alpha.1",
+    "@deepseek-ai/dsh-client-ui-sidebar": "0.1.2-alpha.1",
+    "@deepseek-ai/dsh-client-ui-session": "0.1.2-alpha.1",
+    "@deepseek-ai/dsh-llm": "0.1.2-alpha.1",
+    "@deepseek-ai/dsh-subagent": "0.1.2-alpha.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "keywords": [
     "deepseek-harness",

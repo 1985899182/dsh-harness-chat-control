@@ -27,13 +27,14 @@
 
 - **主对话引用**：引用整条回答或选中的片段；不会把 Markdown 标记（如 `>`、`---`）污染到正文。
 - **原生注释胶囊**：引用在输入框中显示为 `1 条注释` 胶囊，用户可先编辑问题、移除引用，再决定是否发送。
-- **侧边栏引用**：使用 `dsh-better-sidebar` 原生 `SideChatView` 和 DSH 原生 `InputBar`，不是另造一套输入框；主会话与侧边会话相互独立。
+- **内置侧边栏**：直接内置并锁定 `dsh-better-sidebar@0.17.1` 的 `SideChatView`、转录映射和样式；未安装 Better Sidebar 时也能使用，已安装其他版本时仍由本项目的侧边实现生效。
+- **侧边栏引用**：沿用 Better Sidebar 原生对话布局和 DSH 原生会话/模型能力；主会话与侧边会话相互独立。
 - **侧边原生对话栏**：权限、模型菜单、停止和发送状态都由原生对话栏负责，避免重复事件导致整页卡死。
 - **模型选择**：侧边会话直接使用原生模型选择器，模型设置只作用于当前侧边会话。
 - **编辑并重发**：用户消息点击铅笔后回到原生输入框；发送后在原会话位置覆盖显示新的分支，不创建一串重复新会话。
 - **停止回答**：复用 DSH 原生停止/发送状态，引用和侧边栏不会拦截或重复提交原生事件。
 
-插件只增加引用胶囊、入口和会话路由，输入框、权限、模型菜单、输出渲染均交给 DSH Harness 与 Better Sidebar 原生组件。
+插件只增加引用胶囊、入口和会话路由；侧边栏的布局、转录和会话生命周期来自锁定的 Better Sidebar 0.17.1 源码，避免外部插件版本冲突。
 
 ## 适配版本
 
@@ -52,8 +53,8 @@
 在 Windows PowerShell 中执行当前稳定版本的一键安装命令：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.60/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.60'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.61/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.61'
 ```
 
 安装器会把插件放入 DSH Desktop 的 `web` profile。首次代际安装或当前插件未运行时会直接暂存并提示完全退出、重新打开 DSH Desktop；只有已运行插件升级才同步 Web Client 并通过 HMR 更新，随后刷新页面（`Ctrl+R`）即可。
@@ -61,13 +62,13 @@ $script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-co
 安装源使用显式 HTTPS，不会让 pnpm 将 GitHub 简写解析成 SSH。脚本会优先使用已有的 `HTTP_PROXY`/`HTTPS_PROXY` 或 WinINET 代理，并把代理传给 pnpm、git、node；也可以显式指定：
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.60' -Proxy 'http://127.0.0.1:7897'
+& ([scriptblock]::Create($script)) -Ref 'v0.2.61' -Proxy 'http://127.0.0.1:7897'
 ```
 
 网络较慢时可指定 npm registry 和重试次数：
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.60' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
+& ([scriptblock]::Create($script)) -Ref 'v0.2.61' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
 ```
 
 命令通过内存中的 `scriptblock` 执行，不要求修改 PowerShell 执行策略；若保存为 `.ps1` 后直接运行，请使用 `powershell -ExecutionPolicy Bypass -File`。
@@ -101,7 +102,7 @@ npm test
 
 ## 版本
 
-当前里程碑：**`v0.2.60`**，适配上表中的 DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1`。升级 DSH 或 Harness 主版本后，请重新验证原生 Slots 和状态接口。
+当前里程碑：**`v0.2.61`**，适配上表中的 DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1`，并内置 `dsh-better-sidebar@0.17.1` 的侧边对话实现。升级 DSH 或 Harness 主版本后，请重新验证原生 Slots、侧边对话 API 和状态接口。
 
 ## 许可证
 

@@ -1,4 +1,4 @@
-# v0.2.60 — DSH Desktop 0.7.2 安装与网络兼容里程碑
+# v0.2.61 — DSH Desktop 0.7.2 内置侧边对话与安装兼容里程碑
 
 状态：**稳定基线 / Milestone**
 
@@ -15,9 +15,9 @@
 - 主对话用户消息编辑后，在原位置覆盖显示新消息和新回答，不在旧回答下追加重复分支。
 - 普通刷新和 DSH 内置 HMR 后仍保持同一套原生 ChatView 投影。
 - 引用以原生注释胶囊进入主对话和侧边对话，发送前可编辑，正文不被 Markdown 符号污染。
-- 侧边对话沿用 `dsh-better-sidebar@0.17.1` 与 DSH 原生 `InputBar`、模型、权限和发送流程。
+- 侧边对话直接内置 `dsh-better-sidebar@0.17.1` 的 SideChatView、转录映射和样式，并由本项目独占 `sidechat.*` 宿主 API；即使外部安装其他版本，也不会覆盖本项目实现。
 - 安装器使用 DSH Desktop 代际 profile；已运行插件升级可通过客户端同步和页面刷新生效，首次代际安装则明确要求完全重启桌面程序。
-- 清理旧的手写侧边 textarea、重复 draft/controller、发送拦截器和权限路由，只保留原生组件与必要的宿主路由。
+- 侧边引用草稿只通过独立外部 store 传给内置视图，发送前不会自动提交，也不会修改主对话；旧的 DOM 注入/事件拦截路径不再挂载。
 - 针对 DSH alpha.1 与 Better Sidebar 0.18.x 的 `connection.state.getSnapshot` 崩溃增加兼容桥，并在文档/安装流程中固定 `dsh-better-sidebar@0.17.1`。
 - 代际安装统一使用显式 `git+https://github.com/...` 源，避免 pnpm 将 `github:` 简写解析为 SSH 并触发 `Host key verification failed`。
 - 安装器自动读取进程环境/WinINET 代理，把代理传给 pnpm、git、node，并支持 `-Proxy`、`-Registry` 和可调 `-FetchRetries`。

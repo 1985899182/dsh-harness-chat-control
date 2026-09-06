@@ -27,12 +27,13 @@ Click **Ask in sidebar** or choose **Ask in sidebar chat** from the text-selecti
 
 - **Main-chat quotes**: quote a full answer or a selected fragment without leaking Markdown markers such as `>` or `---` into the prompt.
 - **Native annotation chip**: the composer shows the quote as a `1 annotation` chip. You can edit the question or remove the chip before sending.
-- **Native sidebar composer**: uses Better Sidebar's `SideChatView` and DSH's native `InputBar` instead of a second custom text box. Main and sidebar sessions stay independent.
+- **Embedded sidebar**: embeds and pins the `dsh-better-sidebar@0.17.1` `SideChatView`, transcript mapping, and styles. It works without Better Sidebar installed, and this project's sidechat remains authoritative when another version is present.
+- **Sidebar quote**: keeps Better Sidebar's native conversation layout and DSH's session/model capabilities. Main and sidebar sessions stay independent.
 - **Model selection**: the native model selector applies only to the current sidebar session.
 - **Edit and resend**: click the pencil next to a user message to load the original text into the native composer. Sending replaces the visible branch in the same conversation instead of creating duplicate chats.
 - **Stop generation**: reuses DSH's native stop/send state and does not intercept or submit native events twice.
 
-The plugin only adds the quote chip, entry points, and session routing. DSH Harness and Better Sidebar continue to own the composer, permissions, model menu, and output rendering.
+The plugin adds the quote chip, entry points, and session routing; the sidebar layout, transcript, and child-session lifecycle come from the pinned Better Sidebar 0.17.1 source so another plugin version cannot take over.
 
 ## Compatibility
 
@@ -51,8 +52,8 @@ The plugin only adds the quote chip, entry points, and session routing. DSH Harn
 Run the current stable installer in Windows PowerShell:
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.60/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.60'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.61/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.61'
 ```
 
 The installer adds the plugin to the DSH Desktop `web` profile. A first generation install, or an install when the plugin is not live, is staged and clearly asks for a full DSH Desktop restart. Only an upgrade of an already-live plugin synchronizes the Web Client through HMR; refresh the page with `Ctrl+R` afterward.
@@ -60,13 +61,13 @@ The installer adds the plugin to the DSH Desktop `web` profile. A first generati
 The source is an explicit HTTPS Git URL, so pnpm does not reinterpret the GitHub shorthand as SSH. The installer first checks existing `HTTP_PROXY`/`HTTPS_PROXY` values and the WinINET proxy, then passes the result to pnpm, git, and node. You can also set it explicitly:
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.60' -Proxy 'http://127.0.0.1:7897'
+& ([scriptblock]::Create($script)) -Ref 'v0.2.61' -Proxy 'http://127.0.0.1:7897'
 ```
 
 For a slow registry, set a registry URL and retry count:
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.60' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
+& ([scriptblock]::Create($script)) -Ref 'v0.2.61' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
 ```
 
 The command evaluates the downloaded script from an in-memory `scriptblock`, so it does not require changing the PowerShell execution policy. If you save it as a `.ps1` file and run it directly, use `powershell -ExecutionPolicy Bypass -File`.
@@ -100,7 +101,7 @@ This validates the manifest, loader declarations, PowerShell installer, and Java
 
 ## Release
 
-Current milestone: **`v0.2.60`**, validated against DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1`. Recheck the native Slots and state interfaces after upgrading DSH or the Harness major version.
+Current milestone: **`v0.2.61`**, validated against DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1`, with `dsh-better-sidebar@0.17.1` sidechat embedded. Recheck native Slots, sidechat API, and state interfaces after upgrading DSH or the Harness major version.
 
 ## License
 

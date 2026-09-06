@@ -27,12 +27,13 @@ DSH Desktop의 대화 인터랙션을 ChatGPT와 비슷하게 만들어 주는 �
 
 - **메인 대화 인용**: 답변 전체 또는 선택한 일부를 인용합니다. `>`나 `---` 같은 Markdown 기호가 본문에 섞이지 않습니다.
 - **기본 주석 칩**: 인용은 입력창의 `주석 1개` 칩으로 표시되며, 전송 전에 질문을 편집하거나 칩을 삭제할 수 있습니다.
-- **기본 사이드바 입력창**: Better Sidebar의 `SideChatView`와 DSH의 `InputBar`를 사용하며 별도의 텍스트 상자를 만들지 않습니다. 메인 세션과 사이드바 세션은 서로 독립적입니다.
+- **내장 사이드바**: `dsh-better-sidebar@0.17.1`의 `SideChatView`, 전사 매핑, 스타일을 직접 내장하고 고정합니다. Better Sidebar가 없어도 동작하며 다른 버전이 설치되어 있어도 이 프로젝트의 사이드 대화가 우선합니다.
+- **사이드바 인용**: Better Sidebar의 네이티브 대화 레이아웃과 DSH 세션/모델 기능을 그대로 사용합니다. 메인 세션과 사이드바 세션은 서로 독립적입니다.
 - **모델 선택**: 기본 모델 선택은 현재 사이드바 세션에만 적용됩니다.
 - **편집 후 다시 보내기**: 사용자 메시지 옆의 연필 버튼을 누르면 원문이 기본 입력창에 들어옵니다. 전송하면 같은 대화의 원래 위치에서 보이는 분기를 교체합니다.
 - **생성 중지**: DSH의 기본 중지/전송 상태를 재사용하며 이벤트를 중복 전송하지 않습니다.
 
-이 플러그인은 인용 칩, 진입점, 세션 라우팅만 추가합니다. 입력창, 권한, 모델 메뉴, 답변 렌더링은 DSH Harness와 Better Sidebar의 기본 컴포넌트가 담당합니다.
+인용 칩, 진입점, 세션 라우팅을 제공하며, 사이드바 레이아웃·전사·자식 세션 수명주기는 고정된 Better Sidebar 0.17.1 소스를 사용해 외부 플러그인 버전 충돌을 막습니다.
 
 ## 호환 버전
 
@@ -51,8 +52,8 @@ DSH Desktop의 대화 인터랙션을 ChatGPT와 비슷하게 만들어 주는 �
 Windows PowerShell에서 현재 안정 버전 설치 명령을 실행합니다.
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.60/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.60'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.61/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.61'
 ```
 
 설치 프로그램은 플러그인을 DSH Desktop의 `web` 프로필에 추가합니다. 최초 세대 설치이거나 플러그인이 실행 중이 아니면 안전하게 스테이징하고 DSH Desktop을 완전히 종료한 뒤 다시 시작하도록 안내합니다. 이미 실행 중인 플러그인을 업그레이드할 때만 Web Client를 HMR로 동기화한 뒤 페이지를 `Ctrl+R`로 새로 고칩니다.
@@ -60,13 +61,13 @@ $script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-co
 설치 소스는 명시적인 HTTPS Git URL이므로 pnpm이 GitHub 단축 표기를 SSH로 해석하지 않습니다. 설치 프로그램은 기존 `HTTP_PROXY`/`HTTPS_PROXY` 환경 변수 또는 WinINET 프록시를 확인한 뒤 pnpm, git, node 자식 프로세스에 전달합니다. 직접 지정할 수도 있습니다.
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.60' -Proxy 'http://127.0.0.1:7897'
+& ([scriptblock]::Create($script)) -Ref 'v0.2.61' -Proxy 'http://127.0.0.1:7897'
 ```
 
 registry가 느리면 registry URL과 재시도 횟수를 지정합니다.
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.60' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
+& ([scriptblock]::Create($script)) -Ref 'v0.2.61' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
 ```
 
 이 명령은 다운로드한 스크립트를 메모리의 `scriptblock`으로 실행하므로 PowerShell 실행 정책을 바꿀 필요가 없습니다. `.ps1` 파일로 저장해 직접 실행하려면 `powershell -ExecutionPolicy Bypass -File`을 사용하세요.
@@ -100,7 +101,7 @@ npm test
 
 ## 릴리스
 
-현재 마일스톤은 **`v0.2.60`**이며 DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1`에서 검증되었습니다. DSH 또는 Harness의 메이저 버전을 올린 뒤에는 기본 Slot과 상태 인터페이스를 다시 확인하세요.
+현재 마일스톤은 **`v0.2.61`**이며 DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1`, 내장 `dsh-better-sidebar@0.17.1` 사이드 대화에서 검증되었습니다. DSH 또는 Harness의 메이저 버전을 올린 뒤에는 기본 Slot, 사이드 대화 API와 상태 인터페이스를 다시 확인하세요.
 
 ## 라이선스
 

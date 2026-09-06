@@ -27,12 +27,13 @@ DSH Desktop の会話操作を ChatGPT に近づけるプラグインです。
 
 - **メイン会話の引用**：回答全体または選択した一部を引用できます。`>` や `---` などの Markdown 記号が本文に混入しません。
 - **標準の注釈チップ**：引用は入力欄の `1 件の注釈` チップとして表示され、送信前に質問を編集したりチップを削除したりできます。
-- **標準のサイドバー入力欄**：Better Sidebar の `SideChatView` と DSH の `InputBar` を使用し、別のテキストボックスを作りません。メイン会話とサイドバー会話は独立しています。
+- **内蔵サイドバー**：`dsh-better-sidebar@0.17.1` の `SideChatView`、転記マッピング、スタイルを直接内蔵・固定しています。Better Sidebar が未導入でも動作し、別バージョンが存在しても本プロジェクトのサイドチャットが有効です。
+- **サイドバー引用**：Better Sidebar のネイティブな会話レイアウトと DSH のセッション／モデル機能をそのまま利用します。メイン会話とサイドバー会話は独立しています。
 - **モデル選択**：標準のモデル選択は現在のサイドバーセッションだけに適用されます。
 - **編集して再送信**：ユーザーメッセージ横の鉛筆ボタンを押すと元の文章が標準入力欄に入り、送信後は同じ会話の元の位置で表示中の分岐を置き換えます。
 - **生成の停止**：DSH の標準の停止・送信状態を利用し、イベントを二重送信しません。
 
-このプラグインが追加するのは引用チップ、入口、セッションのルーティングだけです。入力欄、権限、モデルメニュー、回答表示は DSH Harness と Better Sidebar の標準コンポーネントが担当します。
+引用チップ、入口、セッションのルーティングに加え、サイドバーのレイアウト、転記、子セッションのライフサイクルは固定した Better Sidebar 0.17.1 のソースを使うため、外部プラグインのバージョン競合を避けられます。
 
 ## 対応バージョン
 
@@ -51,8 +52,8 @@ DSH Desktop の会話操作を ChatGPT に近づけるプラグインです。
 Windows PowerShell で、現在の安定版インストーラーを実行します。
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.60/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.60'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.61/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.61'
 ```
 
 インストーラーはプラグインを DSH Desktop の `web` プロファイルに追加します。初回の世代インストール、またはプラグインが live でない場合は安全にステージングして、DSH Desktop の完全な再起動を案内します。すでに live のプラグインを更新するときだけ Web Client を HMR で同期し、その後ページを `Ctrl+R` で更新します。
@@ -60,13 +61,13 @@ $script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-co
 インストール元は明示的な HTTPS Git URL です。pnpm が GitHub の短縮記法を SSH として解釈することはありません。インストーラーは `HTTP_PROXY`/`HTTPS_PROXY` 環境変数または WinINET のプロキシを確認し、pnpm、git、node の子プロセスへ渡します。明示的に指定することもできます。
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.60' -Proxy 'http://127.0.0.1:7897'
+& ([scriptblock]::Create($script)) -Ref 'v0.2.61' -Proxy 'http://127.0.0.1:7897'
 ```
 
 レジストリへの接続が遅い場合は、registry URL とリトライ回数を指定します。
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.60' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
+& ([scriptblock]::Create($script)) -Ref 'v0.2.61' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
 ```
 
 このコマンドはダウンロードしたスクリプトをメモリ上の `scriptblock` として実行するため、PowerShell の実行ポリシーを変更する必要はありません。`.ps1` として保存して直接実行する場合は `powershell -ExecutionPolicy Bypass -File` を使用してください。
@@ -100,7 +101,7 @@ npm test
 
 ## リリース
 
-現在のマイルストーンは **`v0.2.60`** です。DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1` で検証しています。DSH または Harness のメジャーバージョンを更新した場合は、標準 Slot と状態インターフェースを再確認してください。
+現在のマイルストーンは **`v0.2.61`** です。DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1` と、内蔵した `dsh-better-sidebar@0.17.1` のサイドチャットで検証しています。DSH または Harness のメジャーバージョンを更新した場合は、標準 Slot、サイドチャット API、状態インターフェースを再確認してください。
 
 ## ライセンス
 

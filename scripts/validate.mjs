@@ -13,7 +13,10 @@ const required = [
   'scripts/install.ps1',
   'scripts/install-generation.mjs',
   'README.md',
-  'LICENSE'
+  'LICENSE',
+  'vendor/dsh-better-sidebar-0.17.1/NOTICE.md',
+  'vendor/dsh-better-sidebar-0.17.1/LICENSE',
+  'vendor/dsh-better-sidebar-0.17.1/SOURCE-VERSION.txt'
 ]
 
 for (const relative of required) {
@@ -23,7 +26,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.60') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.61') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -40,7 +43,13 @@ const desktopClientDependencies = [
   '@deepseek-ai/dsh-client-ui-layout',
   '@deepseek-ai/dsh-client-ui-sidebar',
   '@deepseek-ai/dsh-client-ui-conversation',
-  '@deepseek-ai/dsh-client-ui-input-trigger'
+  '@deepseek-ai/dsh-client-ui-input-trigger',
+  '@deepseek-ai/dsh-client-ui-model-selection',
+  '@deepseek-ai/dsh-client-ui-primitives',
+  '@deepseek-ai/dsh-client-locale',
+  '@deepseek-ai/dsh-client-ui-slots',
+  '@deepseek-ai/dsh-client-modules',
+  'dsh-better-sidebar'
 ]
 if (JSON.stringify(manifest.dsh.client.inject) !== JSON.stringify(desktopClientDependencies)) {
   throw new Error('Client injection order does not match the DSH Desktop 0.1.2-alpha.1 contract')
@@ -48,8 +57,20 @@ if (JSON.stringify(manifest.dsh.client.inject) !== JSON.stringify(desktopClientD
 if (manifest.peerDependencies?.['@deepseek-ai/dsh-client-runtime'] !== undefined) {
   throw new Error('The obsolete dsh-client-runtime dependency must not be declared')
 }
-if (manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-input-trigger'] !== '^0.1.2-alpha.1') {
+if (manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-input-trigger'] !== '0.1.2-alpha.1') {
   throw new Error('The native reference-chip input trigger dependency is missing')
+}
+if (manifest.dependencies?.['dsh-better-sidebar'] !== '0.17.1') {
+  throw new Error('The exact Better Sidebar 0.17.1 dependency is missing')
+}
+if (manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-primitives'] !== '0.1.2-alpha.1'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-locale'] !== '0.1.2-alpha.1'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-slots'] !== '0.1.2-alpha.1'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-modules'] !== '0.1.2-alpha.1'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-model-selection'] !== '0.1.2-alpha.1'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-llm'] !== '0.1.2-alpha.1'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-subagent'] !== '0.1.2-alpha.1') {
+  throw new Error('The owned sidechat host/client peers are missing')
 }
 
 const installerPath = resolve(root, 'scripts', 'install.ps1')
@@ -58,7 +79,7 @@ const generationInstaller = readFileSync(resolve(root, 'scripts', 'install-gener
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "git+https://github.com/$Repository.git#$Ref"')) {
   throw new Error('Installer must use the explicit HTTPS GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.60'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.61'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!generationInstaller.includes("ref: DEFAULT_REF") || !generationInstaller.includes('git+https://github.com/${repository}.git#${ref}')) {
@@ -122,7 +143,7 @@ for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.17.1', '侧边原生�
 }
 for (const relative of ['README_EN.md', 'README_JA.md', 'README_KO.md']) {
   const translated = readFileSync(resolve(root, relative), 'utf8')
-  for (const phrase of ['scripts/install.ps1', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.2.60']) {
+  for (const phrase of ['scripts/install.ps1', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.2.61']) {
     if (!translated.includes(phrase)) throw new Error(`${relative} is missing translated install/example content: ${phrase}`)
   }
 }
@@ -143,6 +164,7 @@ for (const relative of ['lib/index.js', 'lib/client.js']) {
 execFileSync(process.execPath, ['--check', resolve(root, 'scripts/install-generation.mjs')], { stdio: 'inherit' })
 
 let registeredModule
+const registeredModules = []
 const registrations = []
 const injectedSlots = []
 const insertedReferences = []
@@ -162,7 +184,8 @@ const browserSandbox = {
   window: {
     __ModuleLoader__: {
       load(definition) {
-        registeredModule = definition
+        registeredModules.push(definition)
+        if (definition?.id === 'dsh-harness-chat-control') registeredModule = definition
       }
     },
     getSelection: () => ({ toString: () => '' }),
@@ -203,7 +226,9 @@ for (const obsolete of ['SIDECHAT_PERMISSION_ROUTE', 'PERMISSION_ROUTE', 'create
 }
 if (!clientSource.includes('createSideChatDraftStore')
   || !clientSource.includes('sidechatReferenceAccessory')
-  || !clientSource.includes('dshhc-sidechat-reference-remove')) {
+  || !clientSource.includes('dshhc-sidechat-reference-remove')
+  || !clientSource.includes("id: 'dsh-harness-chat-control-sidechat'")
+  || !clientSource.includes('installOwnedSidechatView')) {
   throw new Error('Native sidechat draft/reference store is missing')
 }
 if (clientSource.includes('row.append(chip, remove)') || clientSource.includes('stopImmediatePropagation')) {
@@ -227,7 +252,7 @@ if (!clientSource.includes('overlaySnapshot') || !clientSource.includes('useSync
 for (const phrase of ['dshhc-sidechat-native-composer', 'dshhc-sidechat-view', 'dshhc-sidechat-native-view [class*="sidechatComposer"]', 'data-composer-card', 'JyqXLa_root', 'refreshSidechatSession', 'updateTab', 'Promise.allSettled', 'CONNECTION_STATE_BRIDGE', 'installConnectionStateBridge', 'connection.generation']) {
   if (!clientSource.includes(phrase)) throw new Error(`Native sidechat integration is missing: ${phrase}`)
 }
-for (const phrase of ['createSideChatDraftStore', 'NativeSidechatComposer', 'installSidechatComposer', 'dshhc-sidechat-view', 'dshhc-sidechat-native-view [class*="sidechatComposer"]', "callSidebarApi('sidechat.prompt'", "callSidebarApi('sidechat.cancel'"]) {
+for (const phrase of ['createSideChatDraftStore', 'NativeSidechatComposer', 'installOwnedSidechatView', 'dshhc-sidechat-view', 'dshhc-sidechat-native-view [class*="sidechatComposer"]', "callSidebarApi('sidechat.prompt'", "callSidebarApi('sidechat.cancel'"]) {
   if (!clientSource.includes(phrase)) throw new Error(`React sidechat composer seam is missing: ${phrase}`)
 }
 for (const phrase of ['NativeSidechatComposer', 'conversation.composer.bar', 'resolveNativeSessionBinding', 'data-dsh-harness-native-inputbar', 'new Proxy(target', 'useNativeSource']) {
@@ -253,6 +278,9 @@ if (!hostSource.includes("const HISTORY_ROUTE = '/dsh-harness-chat-control/sidec
   || !hostSource.includes('sessionPersistence')
   || !hostSource.includes('createSidechatHistoryRoute')) {
   throw new Error('Host sidechat history compatibility route is missing')
+}
+for (const phrase of ['buildSidechatApi', 'sidechat.start', 'sidechat.prompt', 'sidechat.cancel', 'sidechat.info', 'Sidechat engine copied from dsh-better-sidebar@0.17.1', "path: `/sidebar/api/${method}`"]) {
+  if (!hostSource.includes(phrase)) throw new Error(`Owned sidechat API seam is missing: ${phrase}`)
 }
 if (!hostSource.includes("typeof payload?.childId === 'string'")
   || !hostSource.includes("requireField(payload, 'sessionId')")) {
@@ -293,9 +321,10 @@ const hostEvents = [
 ]
 const hostAppends = []
 const hostSession = {
+  id: 'host-session',
   events: hostEvents,
   surface: { nodes: [0, 1] },
-  header: { origin: 'user' },
+  header: { origin: 'user', cwd: 'D:/Study', agentPreset: 'default' },
   append(type, data, options) {
     const event = { seq: this.events.length, type, data, ...(options || {}) }
     this.events.push(event)
@@ -303,7 +332,7 @@ const hostSession = {
     return event
   }
 }
-const hostAgent = { session: hostSession, status: 'idle' }
+const hostAgent = { id: 'host-session', session: hostSession, status: 'idle', options: { provider: 'deepseek', model: 'v4' } }
 const coldSession = {
   events: hostEvents.map((event) => ({ ...event, data: { ...event.data, content: [{ type: 'text', text: event.type === 'user/message' ? '冷会话原消息' : '冷会话原回答' }] } })),
   surface: { nodes: [0, 1] },
@@ -316,6 +345,32 @@ const coldSession = {
   }
 }
 const coldAgent = { session: coldSession, status: 'idle' }
+const childAgents = new Map()
+const hostAgents = {
+  get: (sessionId) => sessionId === 'host-session' ? hostAgent : childAgents.get(sessionId),
+  async create(options) {
+    const childSession = {
+      id: options.sessionId,
+      events: [...options.seed],
+      header: { ...options.meta, origin: 'subagent', parentSession: 'host-session' },
+    }
+    const child = {
+      id: options.sessionId,
+      session: childSession,
+      status: 'idle',
+      options: options.agentOptions,
+      inject(message) {
+        childSession.events.push({ seq: childSession.events.length, type: 'user/message', time: Date.now(), data: message, source: message.source })
+      },
+      followup(message) {
+        childSession.events.push({ seq: childSession.events.length, type: 'user/message', time: Date.now(), data: message, source: message.source })
+      },
+      cancel() { child.status = 'idle' },
+    }
+    childAgents.set(options.sessionId, child)
+    return { agent: child, dispose() { childAgents.delete(options.sessionId) } }
+  }
+}
 const hostContext = {
   effect(callback) {
     const cleanup = callback()
@@ -332,7 +387,7 @@ const hostContext = {
       }
     }
     if (name === 'webRuntime') return { trustedHosts: [] }
-    if (name === 'agents') return { get: (sessionId) => sessionId === 'host-session' ? hostAgent : undefined }
+    if (name === 'agents') return hostAgents
     if (name === 'sessionController') return {
       resolveAgent: async (sessionId) => sessionId === 'cold-session' ? { agent: coldAgent } : { error: { code: 'session-not-found' } }
     }
@@ -425,6 +480,41 @@ const coldEditAppend = hostAppends.at(-1)
 if (coldEditAppend?.options?.surfaceOp?.op !== 'replace') {
   throw new Error(`Cold-session prompt was not armed for surface replacement: ${JSON.stringify(coldEditAppend)}`)
 }
+const sidechatStartHandler = hostRoutes.get('/sidebar/api/sidechat.start')
+const sidechatPromptHandler = hostRoutes.get('/sidebar/api/sidechat.prompt')
+const sidechatInfoHandler = hostRoutes.get('/sidebar/api/sidechat.info')
+if (typeof sidechatStartHandler !== 'function'
+  || typeof sidechatPromptHandler !== 'function'
+  || typeof sidechatInfoHandler !== 'function') {
+  throw new Error('Owned /sidebar/api sidechat routes were not registered')
+}
+const sidechatStartResponse = hostResponse()
+await sidechatStartHandler(hostRequest({ sessionId: 'host-session', question: '' }), sidechatStartResponse)
+if (sidechatStartResponse.status !== 200 || sidechatStartResponse.body?.ok !== true) {
+  throw new Error(`Owned sidechat start route failed: ${JSON.stringify(sidechatStartResponse)}`)
+}
+const childId = sidechatStartResponse.body.value.childId
+if (typeof childId !== 'string' || childAgents.get(childId) === undefined) {
+  throw new Error(`Owned sidechat did not create a child agent: ${JSON.stringify(sidechatStartResponse.body)}`)
+}
+const sidechatPromptResponse = hostResponse()
+await sidechatPromptHandler(hostRequest({ childId, text: '请解释这段引用' }), sidechatPromptResponse)
+if (sidechatPromptResponse.status !== 200 || sidechatPromptResponse.body?.ok !== true) {
+  throw new Error(`Owned sidechat prompt route failed: ${JSON.stringify(sidechatPromptResponse)}`)
+}
+const childEvents = childAgents.get(childId).session.events
+if (!childEvents.some((event) => event.type === 'user/message' && event.data?.source?.kind === 'plugin')) {
+  throw new Error('Owned sidechat did not record its context boundary injection')
+}
+if (!childEvents.some((event) => event.type === 'user/message' && event.data?.source?.kind === 'user'
+  && event.data?.content?.[0]?.text === '请解释这段引用')) {
+  throw new Error('Owned sidechat did not admit the user follow-up')
+}
+const sidechatInfoResponse = hostResponse()
+await sidechatInfoHandler(hostRequest({ childId }), sidechatInfoResponse)
+if (sidechatInfoResponse.status !== 200 || sidechatInfoResponse.body?.value?.provider !== 'deepseek') {
+  throw new Error(`Owned sidechat info route lost the parent model identity: ${JSON.stringify(sidechatInfoResponse)}`)
+}
 for (const cleanup of hostEffects) cleanup()
 
 vm.runInNewContext(readFileSync(resolve(root, 'lib/client.js'), 'utf8'), browserSandbox, {
@@ -434,6 +524,8 @@ vm.runInNewContext(readFileSync(resolve(root, 'lib/client.js'), 'utf8'), browser
 if (registeredModule?.id !== 'dsh-harness-chat-control') throw new Error('Client loader registration failed')
 const clientPlugin = registeredModule.factory((specifier) => {
   if (specifier === 'react') return fakeReact
+  if (specifier === 'dsh-better-sidebar/client') return { apply() {} }
+  if (specifier === 'dsh-harness-chat-control-sidechat') return { SideChatView: () => null }
   throw new Error(`Unexpected client dependency: ${specifier}`)
 })
 

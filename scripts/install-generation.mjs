@@ -10,7 +10,7 @@
  */
 
 import { existsSync } from 'node:fs'
-import { copyFile, readFile } from 'node:fs/promises'
+import { copyFile, readFile, writeFile } from 'node:fs/promises'
 import { pathToFileURL } from 'node:url'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 
@@ -18,7 +18,7 @@ const PLUGIN_NAME = 'dsh-harness-chat-control'
 const DEFAULT_REPOSITORY = '1985899182/dsh-harness-chat-control'
 const DEFAULT_PROFILE = 'web'
 const DEFAULT_DESKTOP_ROOT = 'D:\\DSH\\DSH Desktop'
-const DEFAULT_REF = 'v0.2.60'
+const DEFAULT_REF = 'v0.2.61'
 
 function githubGitSpec(repository, ref) {
   return `git+https://github.com/${repository}.git#${ref}`
@@ -134,6 +134,30 @@ async function synchronizeLiveClient({ dshHome, generationDirectory, previousPac
   return { source: newClientPath, target: previousClientPath }
 }
 
+// Older CLI installs leave a user patch in profiles/<name>/cordis.patch.yml.
+// That patch has precedence over the generation bundle and can therefore keep
+// the plugin on the old six-service injection list forever.  Update only this
+// plugin's inject line; every unrelated user patch entry remains byte-for-byte
+// untouched.  A missing entry is intentional: the generation's own bundle
+// patch is authoritative for a fresh profile.
+async function synchronizeProfilePatch(profileDir) {
+  const patchPath = join(profileDir, 'cordis.patch.yml')
+  let text
+  try {
+    text = await readFile(patchPath, 'utf8')
+  } catch (error) {
+    if (error?.code === 'ENOENT') return false
+    throw error
+  }
+  const inject = '  inject: [clientModules, webServer, webRuntime, llm, sessionController, agents, agentPresets, sessionPersistence, sessionTitle]'
+  const pattern = /(^|\n)(\s*- id:\s*harness-chat-control\b[\s\S]*?)(\n\s+inject:\s*\[[^\n]*\])/u
+  if (!pattern.test(text)) return false
+  const updated = text.replace(pattern, (_match, lineStart, prefix) => `${lineStart}${prefix}\n${inject}`)
+  if (updated === text) return false
+  await writeFile(patchPath, updated, 'utf8')
+  return true
+}
+
 const options = parseArgs(process.argv.slice(2))
 assertSafe(options.profile, 'profile', /^[A-Za-z0-9][A-Za-z0-9._-]*$/u)
 assertSafe(options.ref, 'ref', /^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._/-]*$/u)
@@ -242,6 +266,12 @@ if (typeof options.proxy === 'string' && options.proxy.trim() !== '') {
   childEnvironment.ALL_PROXY = options.proxy
 }
 childEnvironment.GIT_TERMINAL_PROMPT = '0'
+// DSH supplies @deepseek-ai packages from its profile as host singletons.
+// Keep pnpm from resolving Desktop's private alpha peers from the public npm
+// registry; the generation installer removes any accidental singleton copies
+// after the direct plugin dependencies are installed.
+childEnvironment.npm_config_auto_install_peers = 'false'
+childEnvironment.PNPM_CONFIG_AUTO_INSTALL_PEERS = 'false'
 
 console.log(`DSH Desktop: ${desktopRoot}`)
 console.log(`Harness home: ${dshHome}`)
@@ -283,6 +313,7 @@ const result = await desktop.withRegistryLock(dshHome, async () => {
   // the bundle before the next launch (the live market intentionally defers
   // this operation until its cold-start projector).
   const projected = await desktop.projectGenerations(dshHome, options.profile)
+  const profilePatchUpdated = await synchronizeProfilePatch(profileDir)
   const liveClientSync = options.syncLiveClient
     ? await synchronizeLiveClient({
         dshHome,
@@ -290,7 +321,7 @@ const result = await desktop.withRegistryLock(dshHome, async () => {
         previousPackageDirectory: options.previousPackageDirectory,
       })
     : undefined
-  return { install, exposed, published, projected, liveClientSync }
+  return { install, exposed, published, projected, profilePatchUpdated, liveClientSync }
 })
 
 const manifest = await readJson(profileManifestPath)
@@ -309,6 +340,7 @@ console.log(`Generation installed: ${result.install.generation.id}`)
 if (result.exposed.length > 0) console.log(`Available for validation: ${result.exposed.join(', ')}`)
 console.log(`Generation staged for next restart: ${result.published.plugins.join(', ')}`)
 console.log(`Projected profile layers: ${result.projected.linked.join(', ')}`)
+if (result.profilePatchUpdated) console.log(`Updated profile patch injection: ${profileManifestPath.replace(/package\.json$/u, 'cordis.patch.yml')}`)
 console.log(`Bundles: ${JSON.stringify(result.published.bundles)}`)
 console.log(`Installed and registered: ${PLUGIN_NAME}@${dependencies[PLUGIN_NAME]}`)
 if (result.liveClientSync !== undefined) {
