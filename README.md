@@ -4,7 +4,7 @@
 
 ## 功能
 
-- **停止并编辑重发**：每条用户/steering 消息的原生操作行旁提供与 ChatGPT 一致的铅笔按钮；点击后把原文字直接放入 DSH 原生 composer，用户可在同一个输入框中修改。点击原生发送按钮或按 Enter 后，插件在当前会话的 surface 上原地替换该消息及其后续回答，并继续使用同一个会话 ID，不会创建新的侧边栏会话。
+- **停止并编辑重发**：每条用户/steering 消息的原生操作行旁提供与 ChatGPT 一致的铅笔按钮；点击后把原文字直接放入 DSH 原生 composer，用户可在同一个输入框中修改。点击原生发送按钮或按 Enter 后，插件在当前会话的 surface 上原地替换该消息及其后续回答，并继续使用同一个会话 ID，不会创建新的侧边栏会话。聊天渲染层同步把新分支投影回原位置：旧用户气泡、旧回答和中间分支在当前界面隐藏，新回答显示在原回答位置；追加式日志仍保留用于审计和后续再编辑。
 - **回答引用**：每个已完成 AI 回答的操作条新增“引用”和“侧栏问”。先选中文字可只引用选区；未选中时引用整条回答。
 - **选中文字浮动工具条**：在用户或 AI 消息中选中文字后，选区上方显示“添加到对话 / 更多详情 / 在侧边聊天中提问”三段式圆角工具条；滚动或窗口尺寸变化时会自动跟随选区。
 - **原生注释芯片**：“引用”和“添加到对话”会在 DSH 原生 composer 中插入一个不可拆分的 `1 条注释` 胶囊，右侧的移除叉号也在同一胶囊内部；不把摘录直接粘贴成普通文字，也不会自动发送。胶囊保留引用身份，发送时才由本插件序列化为带纯文本边界的上下文。
@@ -32,8 +32,8 @@ DSH 的底层事件日志仍然是追加式的，但当前版本提供了原生�
 DSH Desktop 可以保持打开。在 PowerShell 中执行下面的命令（当前稳定版本）：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.53/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.53'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.54/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.54'
 ```
 
 脚本会自动定位常见的 DSH Desktop 安装目录（包括 `D:\DSH\DSH Desktop` 与 `%LOCALAPPDATA%\Programs\DSH Desktop`），设置正确的 Desktop Harness home，并使用桌面版自带的 generation installer 将 GitHub 插件放入独立代际；这一步比直接写入共享 `node_modules` 更可靠，也能保证 Web Client 在冷启动时发现插件。旧版本留下的共享安装会先被安全移除。
@@ -49,25 +49,25 @@ $script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-co
 如需强制只安装并暂存、不尝试当前进程的热挂载，可加 `-SkipLiveMount`：
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.53' -SkipLiveMount
+& ([scriptblock]::Create($script)) -Ref 'v0.2.54' -SkipLiveMount
 ```
 
 如果日志轮换导致自动发现不到当前页面，可显式传入 DSH 页面地址（必须是本机地址，保留地址栏中的 `token`）：
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.53' -WebUrl 'http://127.0.0.1:65102/?token=你的当前token'
+& ([scriptblock]::Create($script)) -Ref 'v0.2.54' -WebUrl 'http://127.0.0.1:65102/?token=你的当前token'
 ```
 
 如安装目录不在自动探测范围内，或想先只查看将要执行的操作：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.53/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'v0.2.53' -DryRun
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.54/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -DesktopRoot 'D:\DSH\DSH Desktop' -Profile 'web' -Ref 'v0.2.54' -DryRun
 ```
 
 `-Ref` 可以换成已发布的 Git tag 或提交 SHA，以固定安装版本。通过 `main` 安装时，更新只需在完全退出 DSH Desktop 后重新执行一键命令；若使用 `main`，脚本地址也相应改为 `.../main/scripts/install.ps1`。
 
-为兼容 DSH Desktop 0.7.2 的 GitHub 更新检测，发布版本请使用**轻量 tag**（例如 `git tag v0.2.53`），不要使用带注释的 `git tag -a`。该 Desktop 版本直接比较 `refs/tags/*` 返回值；带注释的 tag 返回 tag object，而不是实际提交，会造成“更新后版本没有变化”的误报。
+为兼容 DSH Desktop 0.7.2 的 GitHub 更新检测，发布版本请使用**轻量 tag**（例如 `git tag v0.2.54`），不要使用带注释的 `git tag -a`。该 Desktop 版本直接比较 `refs/tags/*` 返回值；带注释的 tag 返回 tag object，而不是实际提交，会造成“更新后版本没有变化”的误报。
 
 ### 从本地源码安装
 
