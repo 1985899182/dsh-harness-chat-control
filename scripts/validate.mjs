@@ -410,8 +410,23 @@ const hostContext = {
         }
       }
     }
+    if (name === 'llm') return {
+      async resolveCallConfig(selection) { return { ...selection } },
+      async resolveModelInfo() { return { inputModalities: ['text', 'image'] } }
+    }
     if (name === 'sessionController') return {
-      resolveAgent: async (sessionId) => sessionId === 'cold-session' ? { agent: coldAgent } : { error: { code: 'session-not-found' } }
+      resolveAgent: async (sessionId) => sessionId === 'cold-session' ? { agent: coldAgent } : { error: { code: 'session-not-found' } },
+      agents: {
+        selectionFor(agent) {
+          return { current: agent.selected || { provider: 'deepseek', model: 'v4' } }
+        },
+        selectForNextRequest(agent, selection) {
+          agent.selected = selection
+        },
+        async serializeImageAdmission(_agent, operation) {
+          return operation()
+        }
+      }
     }
     return undefined
   },
@@ -518,6 +533,19 @@ if (sidechatStartResponse.status !== 200 || sidechatStartResponse.body?.ok !== t
 const childId = sidechatStartResponse.body.value.childId
 if (typeof childId !== 'string' || childAgents.get(childId) === undefined) {
   throw new Error(`Owned sidechat did not create a child agent: ${JSON.stringify(sidechatStartResponse.body)}`)
+}
+const sidechatModelHandler = hostRoutes.get('/dsh-harness-chat-control/sidechat-model')
+const sidechatModelResponse = hostResponse()
+await sidechatModelHandler(hostRequest({
+  childId,
+  provider: 'deepseek',
+  model: 'v4-vision',
+  reasoningEffort: 'high'
+}), sidechatModelResponse)
+if (sidechatModelResponse.status !== 200
+  || sidechatModelResponse.body?.value?.selected?.model !== 'v4-vision'
+  || childAgents.get(childId).selected?.model !== 'v4-vision') {
+  throw new Error(`Owned sidechat model selection was not applied to the child: ${JSON.stringify(sidechatModelResponse.body)}`)
 }
 const sidechatPromptResponse = hostResponse()
 await sidechatPromptHandler(hostRequest({ childId, text: '请解释这段引用' }), sidechatPromptResponse)
