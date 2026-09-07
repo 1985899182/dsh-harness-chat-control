@@ -52,8 +52,8 @@ The plugin adds the quote chip, entry points, and session routing; the sidebar l
 Run the current stable installer in Windows PowerShell:
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.62/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.62'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.63/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.63'
 ```
 
 The installer adds the plugin to the DSH Desktop `web` profile. A first generation install, or an install when the plugin is not live, is staged and clearly asks for a full DSH Desktop restart. Only an upgrade of an already-live plugin synchronizes the Web Client through HMR; refresh the page with `Ctrl+R` afterward.
@@ -61,13 +61,13 @@ The installer adds the plugin to the DSH Desktop `web` profile. A first generati
 The source is an explicit HTTPS Git URL, so pnpm does not reinterpret the GitHub shorthand as SSH. The installer first checks existing `HTTP_PROXY`/`HTTPS_PROXY` values and the WinINET proxy, then passes the result to pnpm, git, and node. You can also set it explicitly:
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.62' -Proxy 'http://127.0.0.1:7897'
+& ([scriptblock]::Create($script)) -Ref 'v0.2.63' -Proxy 'http://127.0.0.1:7897'
 ```
 
 For a slow registry, set a registry URL and retry count:
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.62' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
+& ([scriptblock]::Create($script)) -Ref 'v0.2.63' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
 ```
 
 The command evaluates the downloaded script from an in-memory `scriptblock`, so it does not require changing the PowerShell execution policy. If you save it as a `.ps1` file and run it directly, use `powershell -ExecutionPolicy Bypass -File`.
@@ -101,7 +101,7 @@ This validates the manifest, loader declarations, PowerShell installer, and Java
 
 ## Release
 
-Current milestone: **`v0.2.62`**, validated against DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1`, with `dsh-better-sidebar@0.17.1` sidechat embedded. This release fixes startup aborts caused by reading an undeclared Cordis context property. Recheck native Slots, sidechat API, and state interfaces after upgrading DSH or the Harness major version.
+Current milestone: **`v0.2.63`**, validated against DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1`, with `dsh-better-sidebar@0.17.1` sidechat embedded. This release fixes startup aborts caused by reading an undeclared Cordis context property and request failures caused by missing message IDs in isolated loaders. Recheck native Slots, sidechat API, and state interfaces after upgrading DSH or the Harness major version.
 
 ## License
 

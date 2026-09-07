@@ -26,7 +26,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.62') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.63') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -79,7 +79,7 @@ const generationInstaller = readFileSync(resolve(root, 'scripts', 'install-gener
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "git+https://github.com/$Repository.git#$Ref"')) {
   throw new Error('Installer must use the explicit HTTPS GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.62'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.63'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!generationInstaller.includes("ref: DEFAULT_REF") || !generationInstaller.includes('git+https://github.com/${repository}.git#${ref}')) {
@@ -143,7 +143,7 @@ for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.17.1', '侧边原生�
 }
 for (const relative of ['README_EN.md', 'README_JA.md', 'README_KO.md']) {
   const translated = readFileSync(resolve(root, relative), 'utf8')
-  for (const phrase of ['scripts/install.ps1', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.2.62']) {
+  for (const phrase of ['scripts/install.ps1', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.2.63']) {
     if (!translated.includes(phrase)) throw new Error(`${relative} is missing translated install/example content: ${phrase}`)
   }
 }
@@ -363,9 +363,11 @@ const hostAgents = {
       status: 'idle',
       options: options.agentOptions,
       inject(message) {
+        if (typeof message?.id !== 'string' || message.id === '') throw new Error('Sidechat injection message is missing a stable id')
         childSession.events.push({ seq: childSession.events.length, type: 'user/message', time: Date.now(), data: message, source: message.source })
       },
       followup(message) {
+        if (typeof message?.id !== 'string' || message.id === '') throw new Error('Sidechat follow-up message is missing a stable id')
         childSession.events.push({ seq: childSession.events.length, type: 'user/message', time: Date.now(), data: message, source: message.source })
       },
       cancel() { child.status = 'idle' },
@@ -506,6 +508,14 @@ if (sidechatPromptResponse.status !== 200 || sidechatPromptResponse.body?.ok !==
   throw new Error(`Owned sidechat prompt route failed: ${JSON.stringify(sidechatPromptResponse)}`)
 }
 const childEvents = childAgents.get(childId).session.events
+const firstAdmittedIndex = childEvents.findIndex((event) => event.type === 'user/message' && event.data?.source?.kind === 'plugin')
+const admittedMessages = (firstAdmittedIndex < 0 ? [] : childEvents.slice(firstAdmittedIndex))
+  .filter((event) => event.type === 'user/message' && event.data?.source?.kind !== undefined)
+  .map((event) => event.data)
+if (admittedMessages.length < 2
+  || new Set(admittedMessages.map((message) => message.id)).size !== admittedMessages.length) {
+  throw new Error(`Owned sidechat messages must carry unique stable ids: ${JSON.stringify(admittedMessages)}`)
+}
 if (!childEvents.some((event) => event.type === 'user/message' && event.data?.source?.kind === 'plugin')) {
   throw new Error('Owned sidechat did not record its context boundary injection')
 }

@@ -52,8 +52,8 @@ DSH Desktop의 대화 인터랙션을 ChatGPT와 비슷하게 만들어 주는 �
 Windows PowerShell에서 현재 안정 버전 설치 명령을 실행합니다.
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.62/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.62'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.63/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.63'
 ```
 
 설치 프로그램은 플러그인을 DSH Desktop의 `web` 프로필에 추가합니다. 최초 세대 설치이거나 플러그인이 실행 중이 아니면 안전하게 스테이징하고 DSH Desktop을 완전히 종료한 뒤 다시 시작하도록 안내합니다. 이미 실행 중인 플러그인을 업그레이드할 때만 Web Client를 HMR로 동기화한 뒤 페이지를 `Ctrl+R`로 새로 고칩니다.
@@ -61,13 +61,13 @@ $script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-co
 설치 소스는 명시적인 HTTPS Git URL이므로 pnpm이 GitHub 단축 표기를 SSH로 해석하지 않습니다. 설치 프로그램은 기존 `HTTP_PROXY`/`HTTPS_PROXY` 환경 변수 또는 WinINET 프록시를 확인한 뒤 pnpm, git, node 자식 프로세스에 전달합니다. 직접 지정할 수도 있습니다.
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.62' -Proxy 'http://127.0.0.1:7897'
+& ([scriptblock]::Create($script)) -Ref 'v0.2.63' -Proxy 'http://127.0.0.1:7897'
 ```
 
 registry가 느리면 registry URL과 재시도 횟수를 지정합니다.
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.62' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
+& ([scriptblock]::Create($script)) -Ref 'v0.2.63' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
 ```
 
 이 명령은 다운로드한 스크립트를 메모리의 `scriptblock`으로 실행하므로 PowerShell 실행 정책을 바꿀 필요가 없습니다. `.ps1` 파일로 저장해 직접 실행하려면 `powershell -ExecutionPolicy Bypass -File`을 사용하세요.
@@ -101,7 +101,7 @@ npm test
 
 ## 릴리스
 
-현재 마일스톤은 **`v0.2.62`**이며 DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1`, 내장 `dsh-better-sidebar@0.17.1` 사이드 대화에서 검증되었습니다. 이번 버전은 Cordis에 주입되지 않은 컨텍스트 속성을 읽어 플러그인이 시작되지 않던 문제를 수정했습니다. DSH 또는 Harness의 메이저 버전을 올린 뒤에는 기본 Slot, 사이드 대화 API와 상태 인터페이스를 다시 확인하세요.
+현재 마일스톤은 **`v0.2.63`**이며 DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1`, 내장 `dsh-better-sidebar@0.17.1` 사이드 대화에서 검증되었습니다. 이번 버전은 Cordis에 주입되지 않은 컨텍스트 속성으로 인한 시작 실패와 격리 로더에서 메시지 ID가 빠져 발생하는 pending 오류를 수정했습니다. DSH 또는 Harness의 메이저 버전을 올린 뒤에는 기본 Slot, 사이드 대화 API와 상태 인터페이스를 다시 확인하세요.
 
 ## 라이선스
 
