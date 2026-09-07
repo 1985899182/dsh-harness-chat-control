@@ -26,7 +26,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.61') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.62') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -79,7 +79,7 @@ const generationInstaller = readFileSync(resolve(root, 'scripts', 'install-gener
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "git+https://github.com/$Repository.git#$Ref"')) {
   throw new Error('Installer must use the explicit HTTPS GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.61'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.62'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!generationInstaller.includes("ref: DEFAULT_REF") || !generationInstaller.includes('git+https://github.com/${repository}.git#${ref}')) {
@@ -143,7 +143,7 @@ for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.17.1', '侧边原生�
 }
 for (const relative of ['README_EN.md', 'README_JA.md', 'README_KO.md']) {
   const translated = readFileSync(resolve(root, relative), 'utf8')
-  for (const phrase of ['scripts/install.ps1', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.2.61']) {
+  for (const phrase of ['scripts/install.ps1', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.2.62']) {
     if (!translated.includes(phrase)) throw new Error(`${relative} is missing translated install/example content: ${phrase}`)
   }
 }
@@ -218,6 +218,9 @@ if ((clientSource.match(/function referencePreview\(text\)/gu) || []).length !==
 }
 for (const obsolete of ['createSideChatDraftController', 'createSideChatModelController', 'function SidechatComposer']) {
   if (clientSource.includes(obsolete)) throw new Error(`Obsolete sidechat implementation remains: ${obsolete}`)
+}
+if (!clientSource.includes("const serviceOf = () => safeGet(ctx, 'betterSidebar')")) {
+  throw new Error('Client must resolve betterSidebar through ctx.get; undeclared Cordis properties abort startup')
 }
 for (const obsolete of ['SIDECHAT_PERMISSION_ROUTE', 'PERMISSION_ROUTE', 'createSidechatPermissionRoute']) {
   if (clientSource.includes(obsolete) || hostSource.includes(obsolete)) {

@@ -53,8 +53,8 @@
 在 Windows PowerShell 中执行当前稳定版本的一键安装命令：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.61/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.61'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.62/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.62'
 ```
 
 安装器会把插件放入 DSH Desktop 的 `web` profile。首次代际安装或当前插件未运行时会直接暂存并提示完全退出、重新打开 DSH Desktop；只有已运行插件升级才同步 Web Client 并通过 HMR 更新，随后刷新页面（`Ctrl+R`）即可。
@@ -62,13 +62,13 @@ $script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-co
 安装源使用显式 HTTPS，不会让 pnpm 将 GitHub 简写解析成 SSH。脚本会优先使用已有的 `HTTP_PROXY`/`HTTPS_PROXY` 或 WinINET 代理，并把代理传给 pnpm、git、node；也可以显式指定：
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.61' -Proxy 'http://127.0.0.1:7897'
+& ([scriptblock]::Create($script)) -Ref 'v0.2.62' -Proxy 'http://127.0.0.1:7897'
 ```
 
 网络较慢时可指定 npm registry 和重试次数：
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.61' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
+& ([scriptblock]::Create($script)) -Ref 'v0.2.62' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
 ```
 
 命令通过内存中的 `scriptblock` 执行，不要求修改 PowerShell 执行策略；若保存为 `.ps1` 后直接运行，请使用 `powershell -ExecutionPolicy Bypass -File`。
@@ -102,7 +102,7 @@ npm test
 
 ## 版本
 
-当前里程碑：**`v0.2.61`**，适配上表中的 DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1`，并内置 `dsh-better-sidebar@0.17.1` 的侧边对话实现。升级 DSH 或 Harness 主版本后，请重新验证原生 Slots、侧边对话 API 和状态接口。
+当前里程碑：**`v0.2.62`**，适配上表中的 DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1`，并内置 `dsh-better-sidebar@0.17.1` 的侧边对话实现；本版本修复了 Cordis 未注入属性导致的插件启动失败。升级 DSH 或 Harness 主版本后，请重新验证原生 Slots、侧边对话 API 和状态接口。
 
 ## 许可证
 
