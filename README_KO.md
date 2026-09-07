@@ -53,7 +53,7 @@ DSH Desktop의 대화 인터랙션을 ChatGPT와 비슷하게 만들어 주는 �
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.2.64"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.2.64"
 ```
 
 `dsh`가 `PATH`에 없다면 DSH Desktop에 포함된 CLI를 사용하세요. 실행되는 것은 동일한 `dsh plugin` 설치 명령입니다.
@@ -62,7 +62,7 @@ dsh plugin --profile web add --save-exact "git+https://github.com/1985899182/dsh
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.2.64"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.2.64"
 ```
 
 명시적인 HTTPS Git URL을 사용하므로 pnpm이 GitHub 단축 표기를 SSH로 해석하지 않습니다. 프록시가 필요한 환경에서는 실행 전에 `HTTP_PROXY`, `HTTPS_PROXY` 또는 `ALL_PROXY`를 설정하세요. 최초 설치이거나 플러그인이 실행 중이 아니면 설치 후 DSH Desktop을 완전히 종료했다가 다시 시작하고, 실행 중인 플러그인을 업그레이드할 때는 DSH의 새로 고침 안내를 따르세요.
@@ -73,7 +73,7 @@ $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact dsh-better-sidebar@0.17.1
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty dsh-better-sidebar@0.17.1
 ```
 
 그 후 위의 표준 설치 명령을 실행합니다.
