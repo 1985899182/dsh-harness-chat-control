@@ -50,30 +50,25 @@
 
 ## 安装
 
-在 Windows PowerShell 中执行当前稳定版本的一键安装命令：
+统一使用 DSH 官方插件命令安装。先完全退出 DSH Desktop，在 Windows PowerShell 中执行：
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.64/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.64'
+$env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
+dsh plugin --profile web add --save-exact "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.2.64"
 ```
 
-安装器会把插件放入 DSH Desktop 的 `web` profile。首次代际安装或当前插件未运行时会直接暂存并提示完全退出、重新打开 DSH Desktop；只有已运行插件升级才同步 Web Client 并通过 HMR 更新，随后刷新页面（`Ctrl+R`）即可。
-
-安装源使用显式 HTTPS，不会让 pnpm 将 GitHub 简写解析成 SSH。脚本会优先使用已有的 `HTTP_PROXY`/`HTTPS_PROXY` 或 WinINET 代理，并把代理传给 pnpm、git、node；也可以显式指定：
+如果 `dsh` 不在 PATH，使用 DSH Desktop 自带的 CLI；底层仍是同一条 `dsh plugin` 安装命令：
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.64' -Proxy 'http://127.0.0.1:7897'
+$desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
+$desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
+$env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.2.64"
 ```
 
-网络较慢时可指定 npm registry 和重试次数：
+命令使用显式 HTTPS Git 地址，避免 pnpm 将 GitHub 简写解析成 SSH。若本机通过代理联网，请在执行前设置 `HTTP_PROXY`、`HTTPS_PROXY` 或 `ALL_PROXY`。首次安装或当前插件尚未运行时，安装完成后请完全退出并重新打开 DSH Desktop；已运行插件的升级按 DSH 提示刷新页面即可。
 
-```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.64' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
-```
-
-命令通过内存中的 `scriptblock` 执行，不要求修改 PowerShell 执行策略；若保存为 `.ps1` 后直接运行，请使用 `powershell -ExecutionPolicy Bypass -File`。
-
-如果 profile 中已经是 Sidebar `0.18.x`，先执行兼容修复：
+如果 profile 中已经是 Sidebar `0.18.x`，仍然使用同一个 `dsh plugin` 命令先固定兼容版本：
 
 ```powershell
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
@@ -82,9 +77,7 @@ $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
 & $desktopNode $desktopDsh plugin --profile web add --save-exact dsh-better-sidebar@0.17.1
 ```
 
-然后重新执行上面的一键安装命令并刷新页面。
-
-如果 dshmarket 热挂载返回 502 或其他错误，安装器会保留脱敏后的 HTTP 状态和响应体，并明确提示需要冷启动；不会把代理超时误报成安装成功。
+然后重新执行上面的标准安装命令。
 
 ## 使用方式
 

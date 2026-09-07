@@ -49,30 +49,25 @@ DSH Desktop の会話操作を ChatGPT に近づけるプラグインです。
 
 ## インストール
 
-Windows PowerShell で、現在の安定版インストーラーを実行します。
+すべてのインストールで DSH 公式のプラグインコマンドを使用します。DSH Desktop を完全に終了してから、Windows PowerShell で実行してください。
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.64/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.64'
+$env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
+dsh plugin --profile web add --save-exact "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.2.64"
 ```
 
-インストーラーはプラグインを DSH Desktop の `web` プロファイルに追加します。初回の世代インストール、またはプラグインが live でない場合は安全にステージングして、DSH Desktop の完全な再起動を案内します。すでに live のプラグインを更新するときだけ Web Client を HMR で同期し、その後ページを `Ctrl+R` で更新します。
-
-インストール元は明示的な HTTPS Git URL です。pnpm が GitHub の短縮記法を SSH として解釈することはありません。インストーラーは `HTTP_PROXY`/`HTTPS_PROXY` 環境変数または WinINET のプロキシを確認し、pnpm、git、node の子プロセスへ渡します。明示的に指定することもできます。
+`dsh` が `PATH` にない場合は、DSH Desktop に付属する CLI を使います。実行されるのは同じ `dsh plugin` インストールコマンドです。
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.64' -Proxy 'http://127.0.0.1:7897'
+$desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
+$desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
+$env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.2.64"
 ```
 
-レジストリへの接続が遅い場合は、registry URL とリトライ回数を指定します。
+明示的な HTTPS Git URL を使うため、pnpm が GitHub の短縮記法を SSH として解釈しません。プロキシが必要な環境では、実行前に `HTTP_PROXY`、`HTTPS_PROXY`、または `ALL_PROXY` を設定してください。初回インストール、またはプラグインが live でない状態での更新後は DSH Desktop を完全に再起動し、live 更新では DSH の更新案内に従ってページを再読み込みします。
 
-```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.64' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
-```
-
-このコマンドはダウンロードしたスクリプトをメモリ上の `scriptblock` として実行するため、PowerShell の実行ポリシーを変更する必要はありません。`.ps1` として保存して直接実行する場合は `powershell -ExecutionPolicy Bypass -File` を使用してください。
-
-プロファイルがすでに Sidebar `0.18.x` の場合は、先に次の互換修正を実行します。
+プロファイルがすでに Sidebar `0.18.x` の場合は、同じ `dsh plugin` コマンドで互換バージョンを先に固定します。
 
 ```powershell
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
@@ -81,9 +76,7 @@ $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
 & $desktopNode $desktopDsh plugin --profile web add --save-exact dsh-better-sidebar@0.17.1
 ```
 
-その後、安定版インストーラーをもう一度実行してページを更新します。
-
-dshmarket が HTTP 502 などのホットマウントエラーを返した場合、インストーラーはトークンを伏せた HTTP ステータスとレスポンス本文を表示し、コールドスタートが必要であることを案内します。プロキシのタイムアウトをインストール成功とは扱いません。
+その後、上記の標準インストールコマンドを実行します。
 
 ## 使い方
 

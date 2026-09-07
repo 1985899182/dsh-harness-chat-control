@@ -49,30 +49,25 @@ The plugin adds the quote chip, entry points, and session routing; the sidebar l
 
 ## Install
 
-Run the current stable installer in Windows PowerShell:
+Use the DSH plugin command for every installation. Fully quit DSH Desktop, then run this in Windows PowerShell:
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.64/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.64'
+$env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
+dsh plugin --profile web add --save-exact "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.2.64"
 ```
 
-The installer adds the plugin to the DSH Desktop `web` profile. A first generation install, or an install when the plugin is not live, is staged and clearly asks for a full DSH Desktop restart. Only an upgrade of an already-live plugin synchronizes the Web Client through HMR; refresh the page with `Ctrl+R` afterward.
-
-The source is an explicit HTTPS Git URL, so pnpm does not reinterpret the GitHub shorthand as SSH. The installer first checks existing `HTTP_PROXY`/`HTTPS_PROXY` values and the WinINET proxy, then passes the result to pnpm, git, and node. You can also set it explicitly:
+If `dsh` is not on `PATH`, use the CLI bundled with DSH Desktop; it still executes the same `dsh plugin` install command:
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.64' -Proxy 'http://127.0.0.1:7897'
+$desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
+$desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
+$env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.2.64"
 ```
 
-For a slow registry, set a registry URL and retry count:
+The explicit HTTPS Git URL prevents pnpm from interpreting GitHub shorthand as SSH. If your network requires a proxy, set `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY` before running the command. After a first install, or when the plugin is not already live, fully restart DSH Desktop; for a live upgrade, follow DSH's refresh prompt.
 
-```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.64' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
-```
-
-The command evaluates the downloaded script from an in-memory `scriptblock`, so it does not require changing the PowerShell execution policy. If you save it as a `.ps1` file and run it directly, use `powershell -ExecutionPolicy Bypass -File`.
-
-If the profile already uses Sidebar `0.18.x`, run this compatibility fix first:
+If the profile already uses Sidebar `0.18.x`, use the same `dsh plugin` command to pin the compatible version first:
 
 ```powershell
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
@@ -81,9 +76,7 @@ $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
 & $desktopNode $desktopDsh plugin --profile web add --save-exact dsh-better-sidebar@0.17.1
 ```
 
-Then run the stable installer again and refresh the page.
-
-If dshmarket returns HTTP 502 or another hot-mount error, the installer prints a token-redacted status and response body and tells you to cold-start DSH; a proxy timeout is not reported as a successful install.
+Then run the standard install command above.
 
 ## Usage
 

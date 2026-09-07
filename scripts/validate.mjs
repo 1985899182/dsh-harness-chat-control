@@ -134,8 +134,8 @@ if (!readFileSync(resolve(root, 'cordis.patch.yml'), 'utf8').includes('webServer
 if (!readFileSync(resolve(root, 'cordis.patch.yml'), 'utf8').includes('sessionController, agents')) {
   throw new Error('Host patch must expose the live Agent service for in-place message replacement')
 }
-if (!readFileSync(resolve(root, 'README.md'), 'utf8').includes('scripts/install.ps1')) {
-  throw new Error('README must document the one-command installer')
+if (!readFileSync(resolve(root, 'README.md'), 'utf8').includes('dsh plugin --profile web add --save-exact')) {
+  throw new Error('README must document the standard dsh plugin installer')
 }
 const readme = readFileSync(resolve(root, 'README.md'), 'utf8')
 for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.17.1', '侧边原生对话栏', '铅笔按钮', '卡死', 'README_EN.md', 'README_JA.md', 'README_KO.md']) {
@@ -143,7 +143,7 @@ for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.17.1', '侧边原生�
 }
 for (const relative of ['README_EN.md', 'README_JA.md', 'README_KO.md']) {
   const translated = readFileSync(resolve(root, relative), 'utf8')
-  for (const phrase of ['scripts/install.ps1', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.2.64']) {
+  for (const phrase of ['dsh plugin --profile web add --save-exact', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.2.64']) {
     if (!translated.includes(phrase)) throw new Error(`${relative} is missing translated install/example content: ${phrase}`)
   }
 }
