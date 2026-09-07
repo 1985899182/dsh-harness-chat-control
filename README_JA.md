@@ -52,8 +52,8 @@ DSH Desktop の会話操作を ChatGPT に近づけるプラグインです。
 Windows PowerShell で、現在の安定版インストーラーを実行します。
 
 ```powershell
-$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.63/scripts/install.ps1').TrimStart([char]0xFEFF)
-& ([scriptblock]::Create($script)) -Ref 'v0.2.63'
+$script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-control/v0.2.64/scripts/install.ps1').TrimStart([char]0xFEFF)
+& ([scriptblock]::Create($script)) -Ref 'v0.2.64'
 ```
 
 インストーラーはプラグインを DSH Desktop の `web` プロファイルに追加します。初回の世代インストール、またはプラグインが live でない場合は安全にステージングして、DSH Desktop の完全な再起動を案内します。すでに live のプラグインを更新するときだけ Web Client を HMR で同期し、その後ページを `Ctrl+R` で更新します。
@@ -61,13 +61,13 @@ $script = (irm 'https://raw.githubusercontent.com/1985899182/dsh-harness-chat-co
 インストール元は明示的な HTTPS Git URL です。pnpm が GitHub の短縮記法を SSH として解釈することはありません。インストーラーは `HTTP_PROXY`/`HTTPS_PROXY` 環境変数または WinINET のプロキシを確認し、pnpm、git、node の子プロセスへ渡します。明示的に指定することもできます。
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.63' -Proxy 'http://127.0.0.1:7897'
+& ([scriptblock]::Create($script)) -Ref 'v0.2.64' -Proxy 'http://127.0.0.1:7897'
 ```
 
 レジストリへの接続が遅い場合は、registry URL とリトライ回数を指定します。
 
 ```powershell
-& ([scriptblock]::Create($script)) -Ref 'v0.2.63' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
+& ([scriptblock]::Create($script)) -Ref 'v0.2.64' -Registry 'https://registry.npmjs.org/' -FetchRetries 5
 ```
 
 このコマンドはダウンロードしたスクリプトをメモリ上の `scriptblock` として実行するため、PowerShell の実行ポリシーを変更する必要はありません。`.ps1` として保存して直接実行する場合は `powershell -ExecutionPolicy Bypass -File` を使用してください。
@@ -101,7 +101,7 @@ npm test
 
 ## リリース
 
-現在のマイルストーンは **`v0.2.63`** です。DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1` と、内蔵した `dsh-better-sidebar@0.17.1` のサイドチャットで検証しています。本版では、Cordis の未注入プロパティ参照による起動失敗と、隔離ローダーでメッセージ ID が欠落して発生する pending エラーを修正しました。DSH または Harness のメジャーバージョンを更新した場合は、標準 Slot、サイドチャット API、状態インターフェースを再確認してください。
+現在のマイルストーンは **`v0.2.64`** です。DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1` と、内蔵した `dsh-better-sidebar@0.17.1` のサイドチャットで検証しています。本版では、サイドバーのモデル選択と画像送信を DSH 本体と同じ InputBar/画像受付経路（`imageIds → serializeDraftImages → admitEncodedImages`）に統一し、隔離ローダーで発生する pending エラーも修正しました。DSH または Harness のメジャーバージョンを更新した場合は、標準 Slot、サイドチャット API、状態インターフェースを再確認してください。
 
 ## ライセンス
 

@@ -26,7 +26,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.63') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.2.64') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -79,7 +79,7 @@ const generationInstaller = readFileSync(resolve(root, 'scripts', 'install-gener
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "git+https://github.com/$Repository.git#$Ref"')) {
   throw new Error('Installer must use the explicit HTTPS GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.63'")) {
+if (!installer.includes("[string]$Ref = 'v0.2.64'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!generationInstaller.includes("ref: DEFAULT_REF") || !generationInstaller.includes('git+https://github.com/${repository}.git#${ref}')) {
@@ -143,7 +143,7 @@ for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.17.1', '侧边原生�
 }
 for (const relative of ['README_EN.md', 'README_JA.md', 'README_KO.md']) {
   const translated = readFileSync(resolve(root, relative), 'utf8')
-  for (const phrase of ['scripts/install.ps1', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.2.63']) {
+  for (const phrase of ['scripts/install.ps1', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.2.64']) {
     if (!translated.includes(phrase)) throw new Error(`${relative} is missing translated install/example content: ${phrase}`)
   }
 }
@@ -351,6 +351,9 @@ const coldAgent = { session: coldSession, status: 'idle' }
 const childAgents = new Map()
 const hostAgents = {
   get: (sessionId) => sessionId === 'host-session' ? hostAgent : childAgents.get(sessionId),
+  async serializeImageAdmission(_agent, operation) {
+    return operation()
+  },
   async create(options) {
     const childSession = {
       id: options.sessionId,
@@ -393,6 +396,20 @@ const hostContext = {
     }
     if (name === 'webRuntime') return { trustedHosts: [] }
     if (name === 'agents') return hostAgents
+    if (name === 'attachments') {
+      return {
+        async saveImages(images) {
+          return images.map((image, index) => ({
+            attachmentId: `att-${index}`,
+            mediaType: image.mediaType,
+            bytes: image.data.byteLength,
+            width: 1,
+            height: 1,
+            ...(image.name === undefined ? {} : { name: image.name })
+          }))
+        }
+      }
+    }
     if (name === 'sessionController') return {
       resolveAgent: async (sessionId) => sessionId === 'cold-session' ? { agent: coldAgent } : { error: { code: 'session-not-found' } }
     }
@@ -522,6 +539,23 @@ if (!childEvents.some((event) => event.type === 'user/message' && event.data?.so
 if (!childEvents.some((event) => event.type === 'user/message' && event.data?.source?.kind === 'user'
   && event.data?.content?.[0]?.text === '请解释这段引用')) {
   throw new Error('Owned sidechat did not admit the user follow-up')
+}
+const imagePromptResponse = hostResponse()
+await sidechatPromptHandler(hostRequest({
+  childId,
+  text: '请识别这张图',
+  images: [{ mediaType: 'image/png', data: 'aA==', name: 'sample.png' }]
+}), imagePromptResponse)
+if (imagePromptResponse.status !== 200 || imagePromptResponse.body?.ok !== true) {
+  throw new Error(`Owned sidechat image prompt failed: ${JSON.stringify(imagePromptResponse)}`)
+}
+const imageMessage = childAgents.get(childId).session.events
+  .map((event) => event.data)
+  .find((message) => message?.source?.kind === 'user'
+    && message?.content?.some((block) => block?.type === 'image'))
+if (imageMessage?.content?.[0]?.type !== 'image'
+  || imageMessage.content[0].attachment?.attachmentId !== 'att-0') {
+  throw new Error(`Sidechat image was not admitted as a durable native image block: ${JSON.stringify(imageMessage)}`)
 }
 const sidechatInfoResponse = hostResponse()
 await sidechatInfoHandler(hostRequest({ childId }), sidechatInfoResponse)

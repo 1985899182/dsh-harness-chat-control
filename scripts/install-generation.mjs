@@ -18,7 +18,7 @@ const PLUGIN_NAME = 'dsh-harness-chat-control'
 const DEFAULT_REPOSITORY = '1985899182/dsh-harness-chat-control'
 const DEFAULT_PROFILE = 'web'
 const DEFAULT_DESKTOP_ROOT = 'D:\\DSH\\DSH Desktop'
-const DEFAULT_REF = 'v0.2.63'
+const DEFAULT_REF = 'v0.2.64'
 
 function githubGitSpec(repository, ref) {
   return `git+https://github.com/${repository}.git#${ref}`

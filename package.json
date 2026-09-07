@@ -1,6 +1,6 @@
 {
   "name": "dsh-harness-chat-control",
-  "version": "0.2.63",
+  "version": "0.2.64",
   "description": "ChatGPT-style stop, revise, native annotation-chip quote, and an owned Better Sidebar 0.17.1 sidechat with reference-aware follow-up questions.",
   "type": "module",
   "main": "./lib/index.js",
@@ -60,6 +60,7 @@
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/dsh-api-session-controller": "0.1.2-alpha.1",
+    "@deepseek-ai/dsh-attachment": "0.1.2-alpha.1",
     "@deepseek-ai/dsh-client-ui-chat": "0.1.2-alpha.1",
     "@deepseek-ai/dsh-client-ui-conversation": "0.1.2-alpha.1",
     "@deepseek-ai/dsh-client-ui-input-trigger": "0.1.2-alpha.1",

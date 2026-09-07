@@ -1,4 +1,4 @@
-# v0.2.63 — DSH Desktop 0.7.2 侧边对话请求修复里程碑
+# v0.2.64 — DSH Desktop 0.7.2 侧边对话原生输入栏里程碑
 
 状态：**稳定基线 / Milestone**
 
@@ -24,6 +24,8 @@
 - 首次代际安装或未 live 插件不再盲目调用热挂载接口；直接提示冷启动重投影。只有已 live 插件升级才走客户端同步和 HMR。
 - dshmarket 热挂载失败时保留经过脱敏的 HTTP 状态和响应体，便于区分 502、代理不可用和 profile 状态问题。
 - 修复隔离模块加载路径下用户消息缺少稳定 `id` 导致的 `message "undefined" is already pending`；主对话和侧边对话注入/提问现在始终生成唯一消息标识。
+- 侧边栏模型选择继续使用 DSH 原生 `conversation.input.model`，选择结果写入侧边子会话的 `selectForNextRequest`，不再只改变显示文字。
+- 侧边栏输入栏继续使用 DSH 原生 `conversation.composer.bar` / `InputBar`；图片沿用 `imageIds → serializeDraftImages → admitEncodedImages`，以 durable image block 进入侧边消息，视觉模型可以实际读取附件。
 
 ## 更新边界
 
