@@ -1,2 +1,2 @@
-dsh-better-sidebar 0.17.1
+dsh-better-sidebar 0.24.1
 https://github.com/omdsh-dev/DSH-better-sidebar

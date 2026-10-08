@@ -4,7 +4,7 @@ param(
     [string]$Profile = 'web',
 
     [ValidatePattern('^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._/-]*$')]
-    [string]$Ref = 'v0.2.64',
+    [string]$Ref = 'v0.3.0',
 
     [string]$DesktopRoot,
 
@@ -27,7 +27,7 @@ $ErrorActionPreference = 'Stop'
 
 $PluginName = 'dsh-harness-chat-control'
 $Repository = '1985899182/dsh-harness-chat-control'
-$SupportedHarnessVersion = '0.1.2-alpha.1'
+$SupportedHarnessVersion = '0.2.0-rc.2'
 $SupportedPnpmMajors = @(10, 11)
 $NodeRelativePath = 'resources\app\node_modules\node\bin\node.exe'
 $DshRelativePath = 'resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
@@ -489,11 +489,11 @@ function Warn-IncompatibleBetterSidebar {
     try {
         $manifest = Read-JsonFile -Path $ProfileManifestPath
         $sidebarVersion = Get-ProfileDependencyVersion -ProfileManifest $manifest -PackageName 'dsh-better-sidebar'
-        if ($HarnessVersion -eq $SupportedHarnessVersion -and $sidebarVersion -match '^0\.18(?:\.|$)') {
-            Write-Warning "当前 profile 使用 dsh-better-sidebar@$sidebarVersion，但 DSH Harness $HarnessVersion 只兼容 0.17.1；请先执行：dsh plugin --profile web add --save-exact dsh-better-sidebar@0.17.1"
+        if ($HarnessVersion -eq $SupportedHarnessVersion -and -not [string]::IsNullOrWhiteSpace($sidebarVersion) -and $sidebarVersion -notmatch '^0\.24(?:\.|$)') {
+            Write-Warning "当前 profile 使用 dsh-better-sidebar@$sidebarVersion，但 DSH Harness $HarnessVersion 只兼容 0.24.1；请先执行：dsh plugin --profile web add --save-exact dsh-better-sidebar@0.24.1"
         }
     } catch {
-        Write-Warning "无法读取 $ProfileManifestPath 来检查 dsh-better-sidebar 版本；安装后请确认使用 0.17.1。"
+        Write-Warning "无法读取 $ProfileManifestPath 来检查 dsh-better-sidebar 版本；安装后请确认使用 0.24.1。"
     }
 }
 

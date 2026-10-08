@@ -14,9 +14,9 @@ const required = [
   'scripts/install-generation.mjs',
   'README.md',
   'LICENSE',
-  'vendor/dsh-better-sidebar-0.17.1/NOTICE.md',
-  'vendor/dsh-better-sidebar-0.17.1/LICENSE',
-  'vendor/dsh-better-sidebar-0.17.1/SOURCE-VERSION.txt'
+  'vendor/dsh-better-sidebar-0.24.1/NOTICE.md',
+  'vendor/dsh-better-sidebar-0.24.1/LICENSE',
+  'vendor/dsh-better-sidebar-0.24.1/SOURCE-VERSION.txt'
 ]
 
 for (const relative of required) {
@@ -26,7 +26,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.2.64') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.3.0') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -52,24 +52,24 @@ const desktopClientDependencies = [
   'dsh-better-sidebar'
 ]
 if (JSON.stringify(manifest.dsh.client.inject) !== JSON.stringify(desktopClientDependencies)) {
-  throw new Error('Client injection order does not match the DSH Desktop 0.1.2-alpha.1 contract')
+  throw new Error('Client injection order does not match the DSH Desktop 0.2.0-rc.2 contract')
 }
 if (manifest.peerDependencies?.['@deepseek-ai/dsh-client-runtime'] !== undefined) {
   throw new Error('The obsolete dsh-client-runtime dependency must not be declared')
 }
-if (manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-input-trigger'] !== '0.1.2-alpha.1') {
+if (manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-input-trigger'] !== '0.2.0-rc.2') {
   throw new Error('The native reference-chip input trigger dependency is missing')
 }
-if (manifest.dependencies?.['dsh-better-sidebar'] !== '0.17.1') {
-  throw new Error('The exact Better Sidebar 0.17.1 dependency is missing')
+if (manifest.dependencies?.['dsh-better-sidebar'] !== '0.24.1') {
+  throw new Error('The exact Better Sidebar 0.24.1 dependency is missing')
 }
-if (manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-primitives'] !== '0.1.2-alpha.1'
-  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-locale'] !== '0.1.2-alpha.1'
-  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-slots'] !== '0.1.2-alpha.1'
-  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-modules'] !== '0.1.2-alpha.1'
-  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-model-selection'] !== '0.1.2-alpha.1'
-  || manifest.peerDependencies?.['@deepseek-ai/dsh-llm'] !== '0.1.2-alpha.1'
-  || manifest.peerDependencies?.['@deepseek-ai/dsh-subagent'] !== '0.1.2-alpha.1') {
+if (manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-primitives'] !== '0.2.0-rc.2'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-locale'] !== '0.2.0-rc.2'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-slots'] !== '0.2.0-rc.2'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-modules'] !== '0.2.0-rc.2'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-model-selection'] !== '0.2.0-rc.2'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-llm'] !== '0.2.0-rc.2'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-subagent'] !== '0.2.0-rc.2') {
   throw new Error('The owned sidechat host/client peers are missing')
 }
 
@@ -79,7 +79,7 @@ const generationInstaller = readFileSync(resolve(root, 'scripts', 'install-gener
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "git+https://github.com/$Repository.git#$Ref"')) {
   throw new Error('Installer must use the explicit HTTPS GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.2.64'")) {
+if (!installer.includes("[string]$Ref = 'v0.3.0'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!generationInstaller.includes("ref: DEFAULT_REF") || !generationInstaller.includes('git+https://github.com/${repository}.git#${ref}')) {
@@ -109,7 +109,7 @@ for (const phrase of [
   'Normalize-ClientArtifactText',
   'Get-ClientArtifactHash',
   'Warn-IncompatibleBetterSidebar',
-  'dsh-better-sidebar@0.17.1',
+  'dsh-better-sidebar@0.24.1',
   'ConvertTo-HttpProxyUri',
   'Get-WinInetProxyUri',
   'Initialize-ChildProcessNetwork',
@@ -138,12 +138,12 @@ if (!readFileSync(resolve(root, 'README.md'), 'utf8').includes('dsh plugin --pro
   throw new Error('README must document the standard dsh plugin installer')
 }
 const readme = readFileSync(resolve(root, 'README.md'), 'utf8')
-for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.17.1', '侧边原生对话栏', '铅笔按钮', '卡死', 'README_EN.md', 'README_JA.md', 'README_KO.md']) {
+for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.24.1', '侧边原生对话栏', '铅笔按钮', '卡死', 'README_EN.md', 'README_JA.md', 'README_KO.md']) {
   if (!readme.includes(phrase)) throw new Error(`README is missing the native reference/sidechat note: ${phrase}`)
 }
 for (const relative of ['README_EN.md', 'README_JA.md', 'README_KO.md']) {
   const translated = readFileSync(resolve(root, relative), 'utf8')
-  for (const phrase of ['dsh plugin --profile web add --save-exact --allow-build=node-pty', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.2.64']) {
+  for (const phrase of ['dsh plugin --profile web add --save-exact --allow-build=node-pty', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.3.0']) {
     if (!translated.includes(phrase)) throw new Error(`${relative} is missing translated install/example content: ${phrase}`)
   }
 }

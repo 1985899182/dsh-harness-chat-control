@@ -27,25 +27,25 @@ DSH Desktop의 대화 인터랙션을 ChatGPT와 비슷하게 만들어 주는 �
 
 - **메인 대화 인용**: 답변 전체 또는 선택한 일부를 인용합니다. `>`나 `---` 같은 Markdown 기호가 본문에 섞이지 않습니다.
 - **기본 주석 칩**: 인용은 입력창의 `주석 1개` 칩으로 표시되며, 전송 전에 질문을 편집하거나 칩을 삭제할 수 있습니다.
-- **내장 사이드바**: `dsh-better-sidebar@0.17.1`의 `SideChatView`, 전사 매핑, 스타일을 직접 내장하고 고정합니다. Better Sidebar가 없어도 동작하며 다른 버전이 설치되어 있어도 이 프로젝트의 사이드 대화가 우선합니다.
+- **내장 사이드바**: `dsh-better-sidebar@0.24.1`의 `SideChatView`, 전사 매핑, 스타일을 직접 내장하고 고정합니다. Better Sidebar가 없어도 동작하며 다른 버전이 설치되어 있어도 이 프로젝트의 사이드 대화가 우선합니다.
 - **사이드바 인용**: Better Sidebar의 네이티브 대화 레이아웃과 DSH 세션/모델 기능을 그대로 사용합니다. 메인 세션과 사이드바 세션은 서로 독립적입니다.
 - **모델 선택**: 기본 모델 선택은 현재 사이드바 세션에만 적용됩니다.
 - **편집 후 다시 보내기**: 사용자 메시지 옆의 연필 버튼을 누르면 원문이 기본 입력창에 들어옵니다. 전송하면 같은 대화의 원래 위치에서 보이는 분기를 교체합니다.
 - **생성 중지**: DSH의 기본 중지/전송 상태를 재사용하며 이벤트를 중복 전송하지 않습니다.
 
-인용 칩, 진입점, 세션 라우팅을 제공하며, 사이드바 레이아웃·전사·자식 세션 수명주기는 고정된 Better Sidebar 0.17.1 소스를 사용해 외부 플러그인 버전 충돌을 막습니다.
+인용 칩, 진입점, 세션 라우팅을 제공하며, 사이드바 레이아웃·전사·자식 세션 수명주기는 고정된 Better Sidebar 0.24.1 소스를 사용해 외부 플러그인 버전 충돌을 막습니다.
 
 ## 호환 버전
 
 | 구성 요소 | 버전 |
 | --- | --- |
-| DSH Desktop (Windows) | `0.7.2` |
-| DeepSeek Harness / `@deepseek-ai/dsh` | `0.1.2-alpha.1` |
-| `dsh-better-sidebar` | **`0.17.1`** |
+| DSH Desktop (Windows) | `0.11.0` |
+| DeepSeek Harness / `@deepseek-ai/dsh` | `0.2.0-rc.2` |
+| `dsh-better-sidebar` | **`0.24.1`** |
 | Node.js | `>=20` |
 | pnpm | `10.x` 또는 `11.x` |
 
-`dsh-better-sidebar@0.18.x`는 Harness `0.1.2-rc.1+`를 대상으로 하며 alpha.1에 없는 `connection.state.getSnapshot()`을 읽습니다. DSH Desktop `0.7.2`에서는 Sidebar를 `0.17.1`로 고정하세요. 그렇지 않으면 새 대화를 열 때 `Cannot read properties of undefined (reading 'getSnapshot')` 오류가 발생할 수 있습니다.
+`dsh-better-sidebar@0.24.1`는 Harness `0.2.0-rc.2`를 대상으로 합니다. DSH Desktop `0.11.0`(Harness `0.2.0-rc.2` 포함)에서는 Sidebar를 `0.24.1`로 고정하세요.
 
 ## 설치
 
@@ -53,7 +53,7 @@ DSH Desktop의 대화 인터랙션을 ChatGPT와 비슷하게 만들어 주는 �
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.2.64"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.0"
 ```
 
 `dsh`가 `PATH`에 없다면 DSH Desktop에 포함된 CLI를 사용하세요. 실행되는 것은 동일한 `dsh plugin` 설치 명령입니다.
@@ -62,18 +62,18 @@ dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://gi
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.2.64"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.0"
 ```
 
 명시적인 HTTPS Git URL을 사용하므로 pnpm이 GitHub 단축 표기를 SSH로 해석하지 않습니다. 프록시가 필요한 환경에서는 실행 전에 `HTTP_PROXY`, `HTTPS_PROXY` 또는 `ALL_PROXY`를 설정하세요. 최초 설치이거나 플러그인이 실행 중이 아니면 설치 후 DSH Desktop을 완전히 종료했다가 다시 시작하고, 실행 중인 플러그인을 업그레이드할 때는 DSH의 새로 고침 안내를 따르세요.
 
-프로필이 이미 Sidebar `0.18.x`를 사용한다면 동일한 `dsh plugin` 명령으로 호환 버전을 먼저 고정합니다.
+프로필이 이미 Sidebar `0.24.x`를 사용한다면 동일한 `dsh plugin` 명령으로 호환 버전을 먼저 고정합니다.
 
 ```powershell
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty dsh-better-sidebar@0.17.1
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty dsh-better-sidebar@0.24.1
 ```
 
 그 후 위의 표준 설치 명령을 실행합니다.
@@ -94,7 +94,7 @@ npm test
 
 ## 릴리스
 
-현재 마일스톤은 **`v0.2.64`**이며 DSH Desktop `0.7.2` / Harness `0.1.2-alpha.1`, 내장 `dsh-better-sidebar@0.17.1` 사이드 대화에서 검증되었습니다. 이번 버전은 사이드바의 모델 선택과 이미지 전송을 DSH 본 대화와 동일한 InputBar/이미지 승인 경로(`imageIds → serializeDraftImages → admitEncodedImages`)로 통일하고, 격리 로더의 pending 오류도 수정했습니다. DSH 또는 Harness의 메이저 버전을 올린 뒤에는 기본 Slot, 사이드 대화 API와 상태 인터페이스를 다시 확인하세요.
+현재 마일스톤은 **`v0.3.0`**이며 DSH Desktop `0.11.0` / Harness `0.2.0-rc.2`, 내장 `dsh-better-sidebar@0.24.1` 사이드 대화에서 검증되었습니다. 이번 버전은 사이드바의 모델 선택과 이미지 전송을 DSH 본 대화와 동일한 InputBar/이미지 승인 경로(`imageIds → serializeDraftImages → admitEncodedImages`)로 통일하고, 격리 로더의 pending 오류도 수정했습니다. DSH 또는 Harness의 메이저 버전을 올린 뒤에는 기본 Slot, 사이드 대화 API와 상태 인터페이스를 다시 확인하세요.
 
 ## 라이선스
 

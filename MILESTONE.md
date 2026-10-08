@@ -1,12 +1,12 @@
-# v0.2.64 — DSH Desktop 0.7.2 侧边对话原生输入栏里程碑
+# v0.3.0 — DSH Desktop 0.11.0 侧边对话原生输入栏里程碑
 
 状态：**稳定基线 / Milestone**
 
 ## 适配范围
 
-- DSH Desktop：`0.7.2`（Windows）
-- 内置 DeepSeek Harness：`0.1.2-alpha.1`
-- `dsh-better-sidebar`：`0.17.1`
+- DSH Desktop：`0.11.0`（Windows）
+- 内置 DeepSeek Harness：`0.2.0-rc.2`
+- `dsh-better-sidebar`：`0.24.1`
 - Node.js：`>=20`
 - pnpm：`10.x`（桌面版 profile 首选；`11.x` 可用）
 
@@ -15,10 +15,10 @@
 - 主对话用户消息编辑后，在原位置覆盖显示新消息和新回答，不在旧回答下追加重复分支。
 - 普通刷新和 DSH 内置 HMR 后仍保持同一套原生 ChatView 投影。
 - 引用以原生注释胶囊进入主对话和侧边对话，发送前可编辑，正文不被 Markdown 符号污染。
-- 侧边对话直接内置 `dsh-better-sidebar@0.17.1` 的 SideChatView、转录映射和样式，并由本项目独占 `sidechat.*` 宿主 API；即使外部安装其他版本，也不会覆盖本项目实现。
+- 侧边对话直接内置 `dsh-better-sidebar@0.24.1` 的 SideChatView、转录映射和样式，并由本项目独占 `sidechat.*` 宿主 API；即使外部安装其他版本，也不会覆盖本项目实现。
 - 安装器使用 DSH Desktop 代际 profile；已运行插件升级可通过客户端同步和页面刷新生效，首次代际安装则明确要求完全重启桌面程序。
 - 侧边引用草稿只通过独立外部 store 传给内置视图，发送前不会自动提交，也不会修改主对话；旧的 DOM 注入/事件拦截路径不再挂载。
-- 针对 DSH alpha.1 与 Better Sidebar 0.18.x 的 `connection.state.getSnapshot` 崩溃增加兼容桥，并在文档/安装流程中固定 `dsh-better-sidebar@0.17.1`。
+- 适配 Harness 0.2.0-rc.2 与 Better Sidebar 0.24.1：侧边对话内嵌视图的图标与 Markdown 代码卡标签对齐新的 dsh-client-ui-primitives 契约，宿主会话/预设/子代理与图片准入 API 保持兼容。
 - 代际安装统一使用显式 `git+https://github.com/...` 源，避免 pnpm 将 `github:` 简写解析为 SSH 并触发 `Host key verification failed`。
 - 安装器自动读取进程环境/WinINET 代理，把代理传给 pnpm、git、node，并支持 `-Proxy`、`-Registry` 和可调 `-FetchRetries`。
 - 首次代际安装或未 live 插件不再盲目调用热挂载接口；直接提示冷启动重投影。只有已 live 插件升级才走客户端同步和 HMR。
