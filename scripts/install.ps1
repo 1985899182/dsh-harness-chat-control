@@ -33,6 +33,13 @@ $NodeRelativePath = 'resources\app\node_modules\node\bin\node.exe'
 $DshRelativePath = 'resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $DshPackageRelativePath = 'resources\app\node_modules\@deepseek-ai\dsh\package.json'
 $GenerationInstallerRelativePath = 'resources\app\node_modules\dsh-desktop-market-installer\index.js'
+# DSH Desktop 0.11+ 将 CLI 与代际安装器打包进 app.asar，通过 Electron 二进制
+# 的 Node 模式（ELECTRON_RUN_AS_NODE=1）运行，不再解包独立的 node.exe。
+$HarnessEntryRelativePath = 'resources\harness-node-entry.mjs'
+$AsarDshRelativePath = 'resources\app.asar\node_modules\@deepseek-ai\dsh\lib\bin.js'
+$AsarDshPackageRelativePath = 'resources\app.asar\node_modules\@deepseek-ai\dsh\package.json'
+$AsarGenerationInstallerRelativePath = 'resources\app.asar\node_modules\dsh-desktop-market-installer\index.js'
+$ElectronExeName = 'DSH Desktop.exe'
 
 function Resolve-DesktopInstallation {
     param(
@@ -76,13 +83,108 @@ function Resolve-DesktopInstallation {
                 Root = $root
                 NodePath = $nodePath
                 DshPath = $dshPath
+                DshEntryPath = $null
                 ManifestPath = $manifestPath
                 GenerationInstallerPath = $generationInstallerPath
+                AsarMode = $false
+            }
+        }
+
+        # app.asar 布局：CLI 入口与代际安装器都封装在 asar 内，经
+        # harness-node-entry.mjs 用 Electron 的 Node 模式调用。
+        $asarPath = Join-Path $root 'resources\app.asar'
+        $harnessEntryPath = Join-Path $root $HarnessEntryRelativePath
+        $electronExe = Join-Path $root $ElectronExeName
+        if ((Test-Path -LiteralPath $asarPath -PathType Leaf) -and
+            (Test-Path -LiteralPath $harnessEntryPath -PathType Leaf) -and
+            (Test-Path -LiteralPath $electronExe -PathType Leaf)) {
+            return [PSCustomObject]@{
+                Root = $root
+                NodePath = $electronExe
+                DshPath = $harnessEntryPath
+                DshEntryPath = (Join-Path $root $AsarDshRelativePath)
+                ManifestPath = (Join-Path $root $AsarDshPackageRelativePath)
+                GenerationInstallerPath = (Join-Path $root $AsarGenerationInstallerRelativePath)
+                AsarMode = $true
             }
         }
     }
 
     throw '未找到 DSH Desktop 内置 CLI。请使用 -DesktopRoot 指定 DSH Desktop 的安装目录。'
+}
+
+function Invoke-DesktopNode {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Desktop,
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments
+    )
+
+    $previous = $env:ELECTRON_RUN_AS_NODE
+    try {
+        if ($Desktop.AsarMode) {
+            $env:ELECTRON_RUN_AS_NODE = '1'
+        }
+        & $Desktop.NodePath @Arguments
+    } finally {
+        $env:ELECTRON_RUN_AS_NODE = $previous
+    }
+}
+
+function Invoke-DshPluginCli {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Desktop,
+        [Parameter(Mandatory = $true)]
+        [string]$ProfileName,
+        [Parameter(Mandatory = $true)]
+        [string[]]$PluginArguments
+    )
+
+    $arguments = @($Desktop.DshPath)
+    if ($Desktop.AsarMode) {
+        $arguments += $Desktop.DshEntryPath
+    }
+    $arguments += @('plugin', '--profile', $ProfileName)
+    $arguments += $PluginArguments
+    Invoke-DesktopNode -Desktop $Desktop -Arguments $arguments
+}
+
+function Read-DesktopManifest {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Desktop
+    )
+
+    if (-not $Desktop.AsarMode) {
+        return Read-JsonFile -Path $Desktop.ManifestPath
+    }
+
+    # app.asar 内的 package.json 无法用 Get-Content 直接读取。经 Electron 的
+    # Node 模式解析后打印 version 字段；Electron 的 stdout 属于异步写，直接
+    # 用 `&` 捕获变量会触发 EPIPE，改用 Start-Process 的文件重定向可靠落盘。
+    $outFile = Join-Path ([System.IO.Path]::GetTempPath()) ('dsh-manifest-' + [guid]::NewGuid().ToString('N') + '.json')
+    $errFile = Join-Path ([System.IO.Path]::GetTempPath()) ('dsh-manifest-err-' + [guid]::NewGuid().ToString('N') + '.txt')
+    try {
+        $inlineScript = "const fs=require('fs');process.stdout.write(JSON.parse(fs.readFileSync(process.argv[1],'utf8')).version);"
+        $quotedScript = '"' + $inlineScript + '"'
+        $quotedPath = '"' + $Desktop.ManifestPath + '"'
+        $previous = $env:ELECTRON_RUN_AS_NODE
+        $env:ELECTRON_RUN_AS_NODE = '1'
+        try {
+            $process = Start-Process -FilePath $Desktop.NodePath -ArgumentList @('-e', $quotedScript, $quotedPath) -RedirectStandardOutput $outFile -RedirectStandardError $errFile -Wait -NoNewWindow -PassThru
+        } finally {
+            $env:ELECTRON_RUN_AS_NODE = $previous
+        }
+        if ($process.ExitCode -ne 0) {
+            throw "无法读取 DSH Harness manifest（退出码：$($process.ExitCode)）。"
+        }
+        return [PSCustomObject]@{ version = (Get-Content -LiteralPath $outFile -Raw).Trim() }
+    } finally {
+        Remove-Item -LiteralPath $outFile -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $errFile -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Assert-CommandAvailable {
@@ -926,14 +1028,14 @@ function Remove-LegacyProfilePackage {
     }
 
     Write-Host "$PluginName 是旧的共享 profile 安装，先移除后切换到 DSH Desktop 代际安装。"
-    & $desktop.NodePath $desktop.DshPath plugin --profile $Profile remove $PluginName
+    Invoke-DshPluginCli -Desktop $desktop -ProfileName $Profile -PluginArguments @('remove', $PluginName)
     if ($LASTEXITCODE -ne 0) {
         throw "无法移除旧的 $PluginName 安装（退出码：$LASTEXITCODE）。"
     }
 }
 
 $desktop = Resolve-DesktopInstallation -RequestedRoot $DesktopRoot
-$dshManifest = Read-JsonFile -Path $desktop.ManifestPath
+$dshManifest = Read-DesktopManifest -Desktop $desktop
 if ($dshManifest.version -ne $SupportedHarnessVersion) {
     Write-Warning "当前 DSH Harness 版本为 $($dshManifest.version)，本插件仅在 $SupportedHarnessVersion 上完成验证；将继续安装，但请在重启后检查界面功能。"
 }
@@ -957,7 +1059,11 @@ Write-Host "插件来源：$packageSpec"
 
 if ($DryRun) {
     Write-Host 'Dry run：未修改 DSH profile。将执行：'
-    Write-Host "若 profile 中存在旧的共享安装，将先执行：& '$($desktop.NodePath)' '$($desktop.DshPath)' plugin --profile $Profile remove $PluginName"
+    if ($desktop.AsarMode) {
+        Write-Host "若 profile 中存在旧的共享安装，将先执行：& '$($desktop.NodePath)' '$($desktop.DshPath)' '$($desktop.DshEntryPath)' plugin --profile $Profile remove $PluginName"
+    } else {
+        Write-Host "若 profile 中存在旧的共享安装，将先执行：& '$($desktop.NodePath)' '$($desktop.DshPath)' plugin --profile $Profile remove $PluginName"
+    }
     Write-Host "然后通过 DSH Desktop 代际安装器安装：$packageSpec"
     if ($SkipLiveMount) {
         Write-Host '并跳过运行中 Harness 的 dshmarket 热挂载。'
@@ -1030,9 +1136,9 @@ try {
         $existingManifest = Read-JsonFile -Path $profileManifestPath
         Remove-LegacyProfilePackage -ProfileRoot $profileRoot -ProfileManifest $existingManifest
 
-        if (-not (Test-Path -LiteralPath $desktop.GenerationInstallerPath -PathType Leaf)) {
+        if (-not $desktop.AsarMode -and -not (Test-Path -LiteralPath $desktop.GenerationInstallerPath -PathType Leaf)) {
             Write-Warning '当前 DSH Desktop 未提供代际安装器，将回退到内置 CLI 安装。'
-            & $desktop.NodePath $desktop.DshPath plugin --profile $Profile add --save-exact $packageSpec
+            Invoke-DshPluginCli -Desktop $desktop -ProfileName $Profile -PluginArguments @('add', '--save-exact', $packageSpec)
             if ($LASTEXITCODE -ne 0) {
                 throw "DSH 插件安装失败（退出码：$LASTEXITCODE）。$(Get-NetworkFailureHint -NetworkState $networkState)"
             }
@@ -1083,7 +1189,7 @@ try {
                     )
                     Write-Host '当前 Harness 已加载旧代际；安装后将把新的 Web Client 同步到该路径，触发 DSH 内置 HMR。'
                 }
-                & $desktop.NodePath $helperPath @helperArguments
+                Invoke-DesktopNode -Desktop $desktop -Arguments (@($helperPath) + $helperArguments)
                 if ($LASTEXITCODE -ne 0) {
                     throw "DSH Desktop 代际安装失败（退出码：$LASTEXITCODE）。$(Get-NetworkFailureHint -NetworkState $networkState)"
                 }
