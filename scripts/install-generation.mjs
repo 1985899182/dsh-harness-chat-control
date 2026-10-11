@@ -172,7 +172,7 @@ if (options.sourceDirectory !== undefined && !existsSync(options.sourceDirectory
 const desktopModulePath = join(
   desktopRoot,
   'resources',
-  'app',
+  'app.asar',
   'node_modules',
   'dsh-desktop-market-installer',
   'index.js',
@@ -180,7 +180,7 @@ const desktopModulePath = join(
 const generationInstallerPath = join(
   desktopRoot,
   'resources',
-  'app',
+  'app.asar',
   'node_modules',
   'dsh-desktop-market-installer',
   'generations',
@@ -189,7 +189,7 @@ const generationInstallerPath = join(
 const generationProjectionPath = join(
   desktopRoot,
   'resources',
-  'app',
+  'app.asar',
   'node_modules',
   'dsh-desktop-market-installer',
   'generations',
@@ -198,13 +198,17 @@ const generationProjectionPath = join(
 const generationRegistryPath = join(
   desktopRoot,
   'resources',
-  'app',
+  'app.asar',
   'node_modules',
   'dsh-desktop-market-installer',
   'generations',
   'registry.mjs',
 )
-const nodePath = join(
+// DSH Desktop 0.11+ ships the market installer inside app.asar and runs the
+// generation installer through the Electron binary in Node mode instead of a
+// separately unpacked node.exe.  Fall back to the unpacked Node only for
+// older Desktop layouts that still expose it.
+const unpackedNodePath = join(
   desktopRoot,
   'resources',
   'app',
@@ -213,10 +217,10 @@ const nodePath = join(
   'bin',
   'node.exe',
 )
+const nodePath = existsSync(unpackedNodePath) ? unpackedNodePath : process.execPath
 if (!existsSync(desktopModulePath)) {
   throw new Error(`DSH Desktop generation installer not found: ${desktopModulePath}`)
 }
-if (!existsSync(nodePath)) throw new Error(`DSH Desktop bundled Node not found: ${nodePath}`)
 
 const desktopModuleUrl = pathToFileURL(desktopModulePath).href
 const [desktopEntry, generationInstaller, generationProjection, generationRegistry] = await Promise.all([
@@ -266,6 +270,10 @@ if (typeof options.proxy === 'string' && options.proxy.trim() !== '') {
   childEnvironment.ALL_PROXY = options.proxy
 }
 childEnvironment.GIT_TERMINAL_PROMPT = '0'
+// When the generation installer spawns pnpm through the Electron binary
+// (app.asar layouts), the child must re-enter Node mode or it boots as an
+// Electron app and misparses the CLI arguments.
+if (nodePath === process.execPath) childEnvironment.ELECTRON_RUN_AS_NODE = '1'
 // DSH supplies @deepseek-ai packages from its profile as host singletons.
 // Keep pnpm from resolving Desktop's private alpha peers from the public npm
 // registry; the generation installer removes any accidental singleton copies
