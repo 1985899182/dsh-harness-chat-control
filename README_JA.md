@@ -53,7 +53,7 @@ DSH Desktop の会話操作を ChatGPT に近づけるプラグインです。
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.0"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.1"
 ```
 
 `dsh` が `PATH` にない場合は、DSH Desktop に付属する CLI を使います。実行されるのは同じ `dsh plugin` インストールコマンドです。
@@ -62,7 +62,7 @@ dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://gi
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.0"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.1"
 ```
 
 明示的な HTTPS Git URL を使うため、pnpm が GitHub の短縮記法を SSH として解釈しません。プロキシが必要な環境では、実行前に `HTTP_PROXY`、`HTTPS_PROXY`、または `ALL_PROXY` を設定してください。初回インストール、またはプラグインが live でない状態での更新後は DSH Desktop を完全に再起動し、live 更新では DSH の更新案内に従ってページを再読み込みします。
@@ -94,7 +94,7 @@ npm test
 
 ## リリース
 
-現在のマイルストーンは **`v0.3.0`** です。DSH Desktop `0.11.0` / Harness `0.2.0-rc.2` と、内蔵した `dsh-better-sidebar@0.24.1` のサイドチャットで検証しています。本版では、サイドバーのモデル選択と画像送信を DSH 本体と同じ InputBar/画像受付経路（`imageIds → serializeDraftImages → admitEncodedImages`）に統一し、隔離ローダーで発生する pending エラーも修正しました。DSH または Harness のメジャーバージョンを更新した場合は、標準 Slot、サイドチャット API、状態インターフェースを再確認してください。
+現在のマイルストーンは **`v0.3.1`** です。DSH Desktop `0.11.0` / Harness `0.2.0-rc.2` と、内蔵した `dsh-better-sidebar@0.24.1` のサイドチャットで検証しています。本版はサイドチャットが使えなくなる 2 件の不具合を修正しました。ひとつはサイドチャット子セッションのスコープを先に実体化し、ネイティブ入力欄が準備中のまま固まらないようにした点、もうひとつは V4 セッション形式が拒否する旧 `plugin` ラッパーをやめ、producer 所有の `plugin:dsh-harness-chat-control` source kind を書き込むようにして、サイドチャットのメッセージが受付段階で中断されないようにした点です。DSH または Harness のメジャーバージョンを更新した場合は、標準 Slot、サイドチャット API、状態インターフェースを再確認してください。
 
 ## ライセンス
 

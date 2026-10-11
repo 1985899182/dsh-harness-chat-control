@@ -5,6 +5,11 @@ import vm from 'node:vm'
 import { apply as applyHost } from '../lib/index.js'
 
 const root = resolve(import.meta.dirname, '..')
+// Session format v4 refuses the retired `{ kind: 'plugin', plugin }` wrapper
+// ("format v4 message requires a producer-owned source kind") and its own
+// V3->V4 migration lifts an unknown plugin to `plugin:<package>`, so the
+// boundary injection must be stamped with that producer-owned kind.
+const SIDECHAT_INJECTION_KIND = 'plugin:dsh-harness-chat-control'
 const required = [
   'package.json',
   'cordis.patch.yml',
@@ -26,7 +31,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.3.0') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.3.1') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -79,7 +84,7 @@ const generationInstaller = readFileSync(resolve(root, 'scripts', 'install-gener
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "git+https://github.com/$Repository.git#$Ref"')) {
   throw new Error('Installer must use the explicit HTTPS GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.3.0'")) {
+if (!installer.includes("[string]$Ref = 'v0.3.1'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!generationInstaller.includes("ref: DEFAULT_REF") || !generationInstaller.includes('git+https://github.com/${repository}.git#${ref}')) {
@@ -143,7 +148,7 @@ for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.24.1', '侧边原生�
 }
 for (const relative of ['README_EN.md', 'README_JA.md', 'README_KO.md']) {
   const translated = readFileSync(resolve(root, relative), 'utf8')
-  for (const phrase of ['dsh plugin --profile web add --save-exact --allow-build=node-pty', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.3.0']) {
+  for (const phrase of ['dsh plugin --profile web add --save-exact --allow-build=node-pty', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.3.1']) {
     if (!translated.includes(phrase)) throw new Error(`${relative} is missing translated install/example content: ${phrase}`)
   }
 }
@@ -553,7 +558,7 @@ if (sidechatPromptResponse.status !== 200 || sidechatPromptResponse.body?.ok !==
   throw new Error(`Owned sidechat prompt route failed: ${JSON.stringify(sidechatPromptResponse)}`)
 }
 const childEvents = childAgents.get(childId).session.events
-const firstAdmittedIndex = childEvents.findIndex((event) => event.type === 'user/message' && event.data?.source?.kind === 'plugin')
+const firstAdmittedIndex = childEvents.findIndex((event) => event.type === 'user/message' && event.data?.source?.kind === SIDECHAT_INJECTION_KIND)
 const admittedMessages = (firstAdmittedIndex < 0 ? [] : childEvents.slice(firstAdmittedIndex))
   .filter((event) => event.type === 'user/message' && event.data?.source?.kind !== undefined)
   .map((event) => event.data)
@@ -561,8 +566,11 @@ if (admittedMessages.length < 2
   || new Set(admittedMessages.map((message) => message.id)).size !== admittedMessages.length) {
   throw new Error(`Owned sidechat messages must carry unique stable ids: ${JSON.stringify(admittedMessages)}`)
 }
-if (!childEvents.some((event) => event.type === 'user/message' && event.data?.source?.kind === 'plugin')) {
+if (!childEvents.some((event) => event.type === 'user/message' && event.data?.source?.kind === SIDECHAT_INJECTION_KIND)) {
   throw new Error('Owned sidechat did not record its context boundary injection')
+}
+if (childEvents.some((event) => event.type === 'user/message' && event.data?.source?.kind === 'plugin')) {
+  throw new Error('Sidechat admission still stamps the retired V4 `plugin` source wrapper')
 }
 if (!childEvents.some((event) => event.type === 'user/message' && event.data?.source?.kind === 'user'
   && event.data?.content?.[0]?.text === '请解释这段引用')) {
