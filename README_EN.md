@@ -53,7 +53,7 @@ Use the DSH plugin command for every installation. Fully quit DSH Desktop, then 
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.1"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.2"
 ```
 
 If `dsh` is not on `PATH`, use the CLI bundled with DSH Desktop; it still executes the same `dsh plugin` install command:
@@ -62,7 +62,7 @@ If `dsh` is not on `PATH`, use the CLI bundled with DSH Desktop; it still execut
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.1"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.2"
 ```
 
 The explicit HTTPS Git URL prevents pnpm from interpreting GitHub shorthand as SSH. If your network requires a proxy, set `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY` before running the command. After a first install, or when the plugin is not already live, fully restart DSH Desktop; for a live upgrade, follow DSH's refresh prompt.
@@ -94,7 +94,7 @@ This validates the manifest, loader declarations, PowerShell installer, and Java
 
 ## Release
 
-Current milestone: **`v0.3.1`**, validated against DSH Desktop `0.11.0` / Harness `0.2.0-rc.2`, with `dsh-better-sidebar@0.24.1` sidechat embedded. This release fixes two defects that left the sidechat unusable: the sidechat child session scope is now materialized eagerly so the native composer no longer stalls while preparing, and the V4 session format no longer rejects the retired `plugin` source wrapper — the sidechat boundary message is stamped with the producer-owned `plugin:dsh-harness-chat-control` source kind so admission is no longer aborted. Recheck native Slots, sidechat API, and state interfaces after upgrading DSH or the Harness major version.
+Current milestone: **`v0.3.2`**, validated against DSH Desktop `0.11.0` / Harness `0.2.0-rc.2`, with `dsh-better-sidebar@0.24.1` sidechat embedded. This release fixes three blocking defects: the sidechat child session scope is now materialized eagerly so the native composer no longer stalls while preparing; the V4 session format no longer rejects the retired `plugin` source wrapper, because the sidechat boundary message is stamped with the producer-owned `plugin:dsh-harness-chat-control` source kind; and the message-edit positional replacement marker now uses the exact `{ op, startSeq, endSeq }` shape the host accepts, instead of the `start`/`end` field names that made every edit abort with `carries an invalid replace surfaceOp`. Recheck native Slots, sidechat API, and state interfaces after upgrading DSH or the Harness major version.
 
 ## License
 

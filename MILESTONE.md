@@ -1,4 +1,4 @@
-# v0.3.1 — DSH Desktop 0.11.0 侧边对话可用性修复里程碑
+# v0.3.2 — DSH Desktop 0.11.0 侧边对话可用性修复里程碑
 
 状态：**稳定基线 / Milestone**
 
@@ -30,11 +30,13 @@
 - 侧边对话可完成端到端问答：提交后子会话日志写入 `user/message`（boundary 注入，`source.kind = plugin:dsh-harness-chat-control`）、携带引用的用户消息、`assistant/message` 与 `turn/end {"reason":{"kind":"completed"}}`，界面同步渲染用户气泡、注入上下文行与助手回答。
 - 「添加到对话」与「在侧边聊天中提问」两个入口都能把选区转换成原生注释胶囊（`data-composer-chip="dsh-harness-chat-control"`，`title="1 条注释"`）；侧边入口还会把引用写进子会话作用域保留快照 `retainedBy: {"dsh-harness-chat-control:sidechat": 1}`。
 - 侧边对话「对话 / 轨迹」标签往返切换复用同一子会话，composer 始终可用；连续 3 次往返后作用域保留计数稳定为 1，未出现引用计数累积或泄漏。
+- 暂停/停止后编辑用户消息不再报错：写入的位置替换事件使用宿主唯一接受的精确形状，日志中出现 `{ op: 'replace', startSeq, endSeq }`，不再产生 `session event "user/message" carries an invalid replace surfaceOp`。
 
-## 本版修复的两个阻断问题
+## 本版修复的三个阻断问题
 
 1. **侧边子会话作用域未实体化**：Better Sidebar 的 sidechat 子会话是私有子代理会话，在视图请求前不会创建对应 session scope，因此 `sessions.binding(childId)` 为 `undefined`，原生 `InputBar` 的所有数据源都解析失败，输入框永久停留在占位状态。现在由 `retainSidechatScope` 走宿主同款 `sessions.retain(id, { source })` 接缝实体化作用域并按引用计数保活；子会话异步创建导致的首次失败会退化为直接 `materializeScope` 后重试，成功后通过 `scopeRevision` 触发重新解析。
 2. **会话格式 V4 拒绝已废弃的 source 包装**：边界注入消息曾写成 `{ kind: 'plugin', plugin }` 包装，`assertV4MessageSources` 会抛出 `format v4 message requires a producer-owned source kind`，导致整次准入被中止、子会话日志只留 header。现在直接写入 producer 自有的 `kind: 'plugin:dsh-harness-chat-control'`。
+3. **消息编辑的位置替换标记形状不合法**：宿主 `dsh-session` 的 `isReplaceOp` 只接受恰好三个键 `{ op, startSeq, endSeq }`，本插件曾按旧形状写出 `{ op: 'replace', start, end }`，字段名不匹配使 `surfaceOpOf` 抛 `carries an invalid replace surfaceOp`，整条 `user/message` 准入被中止。现在写入端改用 `startSeq`/`endSeq`，读取端（作用域折叠、替换溯源、客户端改写信息回放）同步改为读取新字段名。
 
 > 注意：宿主端 `lib/index.js` 在进程启动时加载，`install-generation.mjs` 的客户端同步只热更新浏览器产物，因此涉及宿主侧修复的版本必须完全重启 DSH Desktop 才会生效。
 

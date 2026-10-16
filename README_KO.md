@@ -53,7 +53,7 @@ DSH Desktop의 대화 인터랙션을 ChatGPT와 비슷하게 만들어 주는 �
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.1"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.2"
 ```
 
 `dsh`가 `PATH`에 없다면 DSH Desktop에 포함된 CLI를 사용하세요. 실행되는 것은 동일한 `dsh plugin` 설치 명령입니다.
@@ -62,7 +62,7 @@ dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://gi
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.1"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.2"
 ```
 
 명시적인 HTTPS Git URL을 사용하므로 pnpm이 GitHub 단축 표기를 SSH로 해석하지 않습니다. 프록시가 필요한 환경에서는 실행 전에 `HTTP_PROXY`, `HTTPS_PROXY` 또는 `ALL_PROXY`를 설정하세요. 최초 설치이거나 플러그인이 실행 중이 아니면 설치 후 DSH Desktop을 완전히 종료했다가 다시 시작하고, 실행 중인 플러그인을 업그레이드할 때는 DSH의 새로 고침 안내를 따르세요.
@@ -94,7 +94,7 @@ npm test
 
 ## 릴리스
 
-현재 마일스톤은 **`v0.3.1`**이며 DSH Desktop `0.11.0` / Harness `0.2.0-rc.2`, 내장 `dsh-better-sidebar@0.24.1` 사이드 대화에서 검증되었습니다. 이번 버전은 사이드 대화를 사용할 수 없게 만들던 두 가지 결함을 수정했습니다. 하나는 사이드 대화 자식 세션 스코프를 먼저 실체화해 네이티브 입력란이 준비 중 상태에 머무르지 않도록 한 점이고, 다른 하나는 V4 세션 형식이 거부하는 구식 `plugin` 래퍼를 제거하고 producer 소유 `plugin:dsh-harness-chat-control` source kind를 기록해 사이드 대화 메시지가 수락 단계에서 중단되지 않도록 한 점입니다. DSH 또는 Harness의 메이저 버전을 올린 뒤에는 기본 Slot, 사이드 대화 API와 상태 인터페이스를 다시 확인하세요.
+현재 마일스톤은 **`v0.3.2`**이며 DSH Desktop `0.11.0` / Harness `0.2.0-rc.2`, 내장 `dsh-better-sidebar@0.24.1` 사이드 대화에서 검증되었습니다. 이번 버전은 사이드 대화를 막던 세 가지 결함을 수정했습니다. 하나는 사이드 대화 자식 세션 스코프를 먼저 실체화해 네이티브 입력란이 준비 중 상태에 머무르지 않도록 한 점, 다른 하나는 V4 세션 형식이 거부하는 구식 `plugin` 래퍼를 제거하고 producer 소유 `plugin:dsh-harness-chat-control` source kind를 기록해 사이드 대화 메시지가 수락 단계에서 중단되지 않도록 한 점입니다. 또한 메시지 편집이 기록하는 위치 치환 마커를 호스트가 유일하게 허용하는 `{ op, startSeq, endSeq }` 정확한 형태로 바꾸어, `start`/`end` 필드 이름 때문에 `user/message` 전체가 `carries an invalid replace surfaceOp`로 거부되던 문제를 해결했습니다. DSH 또는 Harness의 메이저 버전을 올린 뒤에는 기본 Slot, 사이드 대화 API와 상태 인터페이스를 다시 확인하세요.
 
 ## 라이선스
 

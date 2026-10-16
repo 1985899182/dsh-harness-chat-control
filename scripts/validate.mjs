@@ -31,7 +31,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.3.1') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.3.2') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -84,7 +84,7 @@ const generationInstaller = readFileSync(resolve(root, 'scripts', 'install-gener
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "git+https://github.com/$Repository.git#$Ref"')) {
   throw new Error('Installer must use the explicit HTTPS GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.3.1'")) {
+if (!installer.includes("[string]$Ref = 'v0.3.2'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!generationInstaller.includes("ref: DEFAULT_REF") || !generationInstaller.includes('git+https://github.com/${repository}.git#${ref}')) {
@@ -148,7 +148,7 @@ for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.24.1', '侧边原生�
 }
 for (const relative of ['README_EN.md', 'README_JA.md', 'README_KO.md']) {
   const translated = readFileSync(resolve(root, relative), 'utf8')
-  for (const phrase of ['dsh plugin --profile web add --save-exact --allow-build=node-pty', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.3.1']) {
+  for (const phrase of ['dsh plugin --profile web add --save-exact --allow-build=node-pty', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.3.2']) {
     if (!translated.includes(phrase)) throw new Error(`${relative} is missing translated install/example content: ${phrase}`)
   }
 }
@@ -469,9 +469,14 @@ hostSession.append('user/message', {
   content: [{ type: 'text', text: '修改后的消息' }]
 }, { surfaceOp: 'append' })
 const editAppend = hostAppends.at(-1)
+// The host's `isReplaceOp` accepts only the exact positional-replacement shape
+// `{ op, startSeq, endSeq }`; any extra or renamed key aborts the whole admission
+// with `carries an invalid replace surfaceOp`.
+const replaceOpShapeOf = (append) => JSON.stringify(Object.keys(append?.options?.surfaceOp ?? {}).sort())
 if (editAppend?.options?.surfaceOp?.op !== 'replace'
-  || editAppend.options.surfaceOp.start !== 0
-  || editAppend.options.surfaceOp.end !== 1
+  || editAppend.options.surfaceOp.startSeq !== 0
+  || editAppend.options.surfaceOp.endSeq !== 1
+  || replaceOpShapeOf(editAppend) !== JSON.stringify(['endSeq', 'op', 'startSeq'])
   || JSON.stringify(editAppend.options.sourceEventSeqs) !== JSON.stringify([0, 1])) {
   throw new Error(`Edited prompt was appended instead of replacing the original surface: ${JSON.stringify(editAppend)}`)
 }
@@ -498,8 +503,9 @@ hostSession.append('user/message', {
 }, { surfaceOp: 'append' })
 const secondEditAppend = hostAppends.at(-1)
 if (secondEditAppend?.options?.surfaceOp?.op !== 'replace'
-  || secondEditAppend.options.surfaceOp.start !== 2
-  || secondEditAppend.options.surfaceOp.end !== 2
+  || secondEditAppend.options.surfaceOp.startSeq !== 2
+  || secondEditAppend.options.surfaceOp.endSeq !== 2
+  || replaceOpShapeOf(secondEditAppend) !== JSON.stringify(['endSeq', 'op', 'startSeq'])
   || JSON.stringify(secondEditAppend.options.sourceEventSeqs) !== JSON.stringify([2])) {
   throw new Error(`The second edit did not follow the current replacement node: ${JSON.stringify(secondEditAppend)}`)
 }
