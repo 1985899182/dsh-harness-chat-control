@@ -40,13 +40,13 @@
 
 | 组件 | 版本 |
 | --- | --- |
-| DSH Desktop（Windows） | `0.11.0` |
+| DSH Desktop（Windows） | `0.11.0` / `0.12.0` |
 | DeepSeek Harness / `@deepseek-ai/dsh` | `0.2.0-rc.2` |
 | `dsh-better-sidebar` | **`0.24.1`** |
 | Node.js | `>=20` |
 | pnpm | `10.x` 或 `11.x` |
 
-`dsh-better-sidebar@0.24.1` 面向 Harness `0.2.0-rc.2`。使用 DSH Desktop `0.11.0`（内置 Harness `0.2.0-rc.2`）时请固定为 `0.24.1`。
+`dsh-better-sidebar@0.24.1` 面向 Harness `0.2.0-rc.2`。使用 DSH Desktop `0.11.0` / `0.12.0`（内置 Harness `0.2.0-rc.2`）时请固定为 `0.24.1`。
 
 ## 安装
 
@@ -54,7 +54,7 @@
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.2"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.3"
 ```
 
 如果 `dsh` 不在 PATH，使用 DSH Desktop 自带的 CLI；底层仍是同一条 `dsh plugin` 安装命令：
@@ -63,7 +63,7 @@ dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://gi
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.2"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.3"
 ```
 
 命令使用显式 HTTPS Git 地址，避免 pnpm 将 GitHub 简写解析成 SSH。若本机通过代理联网，请在执行前设置 `HTTP_PROXY`、`HTTPS_PROXY` 或 `ALL_PROXY`。首次安装或当前插件尚未运行时，安装完成后请完全退出并重新打开 DSH Desktop；已运行插件的升级按 DSH 提示刷新页面即可。
@@ -95,7 +95,7 @@ npm test
 
 ## 版本
 
-当前里程碑：**`v0.3.2`**，适配上表中的 DSH Desktop `0.11.0` / Harness `0.2.0-rc.2`，并内置 `dsh-better-sidebar@0.24.1` 的侧边对话实现。本版修复三个阻断性问题：一是侧边子会话作用域延迟实体化，让原生输入框不再长期停留在“正在准备侧边对话输入框…”；二是会话格式 V4 拒绝已废弃的 `plugin` source 包装，改为写入 producer 自有的 `plugin:dsh-harness-chat-control` source kind，侧边消息不再在准入阶段被中止；三是消息编辑写入的位置替换标记改用宿主唯一接受的 `{ op, startSeq, endSeq }` 精确形状，不再因 `start`/`end` 字段名让整条 `user/message` 被拒绝并报 `carries an invalid replace surfaceOp`。升级 DSH 或 Harness 主版本后，请重新验证原生 Slots、侧边对话 API 和状态接口。
+当前里程碑：**`v0.3.3`**，适配上表中的 DSH Desktop `0.11.0` / `0.12.0` 与 Harness `0.2.0-rc.2`，并内置 `dsh-better-sidebar@0.24.1` 的侧边对话实现。本版修复侧边对话只能打开一个标签的问题：Better Sidebar 把 `sidechat` 注册为单实例页面类型，宿主因此把后续每次打开都视为“显示已打开的那个页面”，只聚焦第一个标签，只有关闭它才能再次打开。现在插件在安装时和每次打开前把该标签类型切换为宿主原生的多实例模式（与内置终端、浏览器相同的 `multiple` 开关），每次引用都会创建独立的侧边对话标签，引用多个名词时可同时并列多个对话。已在 DSH Desktop `0.12.0`（内置 Harness `0.2.0-rc.2`）实测：连续三次在主对话选中文本并点击“在侧边聊天中提问”，侧边栏依次出现三个各自的侧边对话标签，每个标签保留自己的引用注释且互不覆盖。升级 DSH 或 Harness 主版本后，请重新验证原生 Slots、侧边对话 API 和状态接口。
 
 ## 许可证
 

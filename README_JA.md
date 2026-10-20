@@ -53,7 +53,7 @@ DSH Desktop の会話操作を ChatGPT に近づけるプラグインです。
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.2"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.3"
 ```
 
 `dsh` が `PATH` にない場合は、DSH Desktop に付属する CLI を使います。実行されるのは同じ `dsh plugin` インストールコマンドです。
@@ -62,7 +62,7 @@ dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://gi
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.2"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.3"
 ```
 
 明示的な HTTPS Git URL を使うため、pnpm が GitHub の短縮記法を SSH として解釈しません。プロキシが必要な環境では、実行前に `HTTP_PROXY`、`HTTPS_PROXY`、または `ALL_PROXY` を設定してください。初回インストール、またはプラグインが live でない状態での更新後は DSH Desktop を完全に再起動し、live 更新では DSH の更新案内に従ってページを再読み込みします。
@@ -94,7 +94,7 @@ npm test
 
 ## リリース
 
-現在のマイルストーンは **`v0.3.2`** です。DSH Desktop `0.11.0` / Harness `0.2.0-rc.2` と、内蔵した `dsh-better-sidebar@0.24.1` のサイドチャットで検証しています。本版はサイドチャットを塞いでいた 3 件の不具合を修正しました。ひとつはサイドチャット子セッションのスコープを先に実体化し、ネイティブ入力欄が準備中のまま固まらないようにした点、もうひとつは V4 セッション形式が拒否する旧 `plugin` ラッパーをやめ、producer 所有の `plugin:dsh-harness-chat-control` source kind を書き込むようにして、サイドチャットのメッセージが受付段階で中断されないようにした点です。さらに、メッセージ編集が書き込む位置置換マーカーを、ホストが唯一受け付ける `{ op, startSeq, endSeq }` の厳密な形に変更し、`start`/`end` というフィールド名のために `user/message` 全体が `carries an invalid replace surfaceOp` で拒否される問題を解消しました。DSH または Harness のメジャーバージョンを更新した場合は、標準 Slot、サイドチャット API、状態インターフェースを再確認してください。
+現在のマイルストーンは **`v0.3.3`** です。DSH Desktop `0.11.0` / `0.12.0` と Harness `0.2.0-rc.2`、内蔵した `dsh-better-sidebar@0.24.1` のサイドチャットで検証しています。本版はサイドチャットが 1 つのタブしか開けない問題を修正しました。Better Sidebar は `sidechat` を単一インスタンスのページ種別として登録するため、ホストは 2 回目以降のオープンを「すでに開いているページを表示する」と解釈し、最初のタブを閉じるまでフォーカスするだけでした。プラグインはインストール時と各オープンの直前に、このタブ種別をホスト本来の複数インスタンスモード（内蔵ターミナル／ブラウザと同じ `multiple` スイッチ）へ切り替えるようになり、引用のたびに独立したサイドチャットタブが開きます。DSH Desktop `0.12.0`（Harness `0.2.0-rc.2`）で実測し、3 回連続で「在侧边聊天中提问」を実行すると 3 つの独立したサイドチャットタブが並び、それぞれが自分の引用注釈を保持することを確認しました。DSH または Harness のメジャーバージョンを更新した場合は、標準 Slot、サイドチャット API、状態インターフェースを再確認してください。
 
 ## ライセンス
 

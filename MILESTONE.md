@@ -1,10 +1,10 @@
-# v0.3.2 — DSH Desktop 0.11.0 侧边对话可用性修复里程碑
+# v0.3.3 — 侧边对话多标签修复里程碑
 
 状态：**稳定基线 / Milestone**
 
 ## 适配范围
 
-- DSH Desktop：`0.11.0`（Windows）
+- DSH Desktop：`0.11.0` / `0.12.0`（Windows）
 - 内置 DeepSeek Harness：`0.2.0-rc.2`
 - `dsh-better-sidebar`：`0.24.1`
 - Node.js：`>=20`
@@ -12,6 +12,7 @@
 
 ## 已验证能力
 
+- 在主对话连续选中不同文本并选择“在侧边聊天中提问”时，侧边栏为每次引用创建独立的侧边对话标签；未关闭已有标签也能继续新增，各标签保留各自的引用注释、模型选择和输入草稿。已在 DSH Desktop `0.12.0` 实测连续三次引用产生三个独立标签。
 - 主对话用户消息编辑后，在原位置覆盖显示新消息和新回答，不在旧回答下追加重复分支。
 - 普通刷新和 DSH 内置 HMR 后仍保持同一套原生 ChatView 投影。
 - 引用以原生注释胶囊进入主对话和侧边对话，发送前可编辑，正文不被 Markdown 符号污染。
@@ -32,7 +33,11 @@
 - 侧边对话「对话 / 轨迹」标签往返切换复用同一子会话，composer 始终可用；连续 3 次往返后作用域保留计数稳定为 1，未出现引用计数累积或泄漏。
 - 暂停/停止后编辑用户消息不再报错：写入的位置替换事件使用宿主唯一接受的精确形状，日志中出现 `{ op: 'replace', startSeq, endSeq }`，不再产生 `session event "user/message" carries an invalid replace surfaceOp`。
 
-## 本版修复的三个阻断问题
+## 本版修复：侧边对话只能打开一个标签
+
+Better Sidebar 把 `sidechat` 作为普通页面类型注册到宿主 `sidebarRightTabs`，没有声明多实例。宿主 `placeTab()` 对单实例类型始终使用 `pageAddress(kind)` 作为 contentId，第二次及以后的打开会被 `findContentTab()` 判定为“该页面已打开”，于是只聚焦第一个标签；只有关闭标签释放 contentId 后才能再次创建。现在插件在 `install()` 时和每次 `openNativeSideChat()` 之前，通过 `ctx.get('sidebarRightTabs').get('sidechat')` 取出当前有效的注册定义并把 `multiple` 置为 `true`——与内置终端、浏览器标签完全相同宿主开关。此后每次打开都会得到带独立 UUID 的 contentId，`revealIfOpened` 不再命中旧标签，引用若干名词即并列若干侧边对话。
+
+## 历史修复（v0.3.2）
 
 1. **侧边子会话作用域未实体化**：Better Sidebar 的 sidechat 子会话是私有子代理会话，在视图请求前不会创建对应 session scope，因此 `sessions.binding(childId)` 为 `undefined`，原生 `InputBar` 的所有数据源都解析失败，输入框永久停留在占位状态。现在由 `retainSidechatScope` 走宿主同款 `sessions.retain(id, { source })` 接缝实体化作用域并按引用计数保活；子会话异步创建导致的首次失败会退化为直接 `materializeScope` 后重试，成功后通过 `scopeRevision` 触发重新解析。
 2. **会话格式 V4 拒绝已废弃的 source 包装**：边界注入消息曾写成 `{ kind: 'plugin', plugin }` 包装，`assertV4MessageSources` 会抛出 `format v4 message requires a producer-owned source kind`，导致整次准入被中止、子会话日志只留 header。现在直接写入 producer 自有的 `kind: 'plugin:dsh-harness-chat-control'`。
