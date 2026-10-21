@@ -1,4 +1,4 @@
-# v0.3.3 — 侧边对话多标签修复里程碑
+# v0.3.4 — 侧边栏标签批量关闭里程碑
 
 状态：**稳定基线 / Milestone**
 
@@ -12,6 +12,7 @@
 
 ## 已验证能力
 
+- 右侧栏标签的右键菜单在宿主原生“关闭”项下方新增“关闭其他标签 / 关闭右侧标签 / 关闭左侧标签”，通过 `sidebar.right.tab.menu.item` 插槽注册；已在 DSH Desktop `0.12.0` 实测三种批量关闭，左右顺序与标签栏一致，无可关闭目标时对应项置灰。
 - 在主对话连续选中不同文本并选择“在侧边聊天中提问”时，侧边栏为每次引用创建独立的侧边对话标签；未关闭已有标签也能继续新增，各标签保留各自的引用注释、模型选择和输入草稿。已在 DSH Desktop `0.12.0` 实测连续三次引用产生三个独立标签。
 - 主对话用户消息编辑后，在原位置覆盖显示新消息和新回答，不在旧回答下追加重复分支。
 - 普通刷新和 DSH 内置 HMR 后仍保持同一套原生 ChatView 投影。
@@ -33,7 +34,11 @@
 - 侧边对话「对话 / 轨迹」标签往返切换复用同一子会话，composer 始终可用；连续 3 次往返后作用域保留计数稳定为 1，未出现引用计数累积或泄漏。
 - 暂停/停止后编辑用户消息不再报错：写入的位置替换事件使用宿主唯一接受的精确形状，日志中出现 `{ op: 'replace', startSeq, endSeq }`，不再产生 `session event "user/message" carries an invalid replace surfaceOp`。
 
-## 本版修复：侧边对话只能打开一个标签
+## 本版新增：侧边栏标签批量关闭
+
+宿主把右侧栏标签的右键菜单开放为 `sidebar.right.tab.menu.item` 列表插槽：它自己先渲染“关闭”，再渲染插件注册的条目。本插件注册三个条目——关闭其他标签、关闭右侧标签、关闭左侧标签——顺序取当前标签栏 `data-dockkit-strip` 内 `data-dockkit-tab` 的 DOM 顺序（即用户看到的左右），关闭统一调用 `ctx.get('sidebarRight').closeIn(sessionId, tabId)`，与宿主自己的关闭按钮走同一条通道，保留关闭前清理和唯一 guide 页保护。左右没有可关闭目标时对应条目自动置灰。菜单项尺寸、字号、圆角与悬停底色对齐宿主原生条目。
+
+## 历史修复（v0.3.3）：侧边对话只能打开一个标签
 
 Better Sidebar 把 `sidechat` 作为普通页面类型注册到宿主 `sidebarRightTabs`，没有声明多实例。宿主 `placeTab()` 对单实例类型始终使用 `pageAddress(kind)` 作为 contentId，第二次及以后的打开会被 `findContentTab()` 判定为“该页面已打开”，于是只聚焦第一个标签；只有关闭标签释放 contentId 后才能再次创建。现在插件在 `install()` 时和每次 `openNativeSideChat()` 之前，通过 `ctx.get('sidebarRightTabs').get('sidechat')` 取出当前有效的注册定义并把 `multiple` 置为 `true`——与内置终端、浏览器标签完全相同宿主开关。此后每次打开都会得到带独立 UUID 的 contentId，`revealIfOpened` 不再命中旧标签，引用若干名词即并列若干侧边对话。
 

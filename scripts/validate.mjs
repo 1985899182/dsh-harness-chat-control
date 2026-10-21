@@ -31,7 +31,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.3.3') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.3.4') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -84,7 +84,7 @@ const generationInstaller = readFileSync(resolve(root, 'scripts', 'install-gener
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "git+https://github.com/$Repository.git#$Ref"')) {
   throw new Error('Installer must use the explicit HTTPS GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.3.3'")) {
+if (!installer.includes("[string]$Ref = 'v0.3.4'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!generationInstaller.includes("ref: DEFAULT_REF") || !generationInstaller.includes('git+https://github.com/${repository}.git#${ref}')) {
@@ -148,7 +148,7 @@ for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.24.1', '侧边原生�
 }
 for (const relative of ['README_EN.md', 'README_JA.md', 'README_KO.md']) {
   const translated = readFileSync(resolve(root, relative), 'utf8')
-  for (const phrase of ['dsh plugin --profile web add --save-exact --allow-build=node-pty', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.3.3']) {
+  for (const phrase of ['dsh plugin --profile web add --save-exact --allow-build=node-pty', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.3.4']) {
     if (!translated.includes(phrase)) throw new Error(`${relative} is missing translated install/example content: ${phrase}`)
   }
 }
@@ -267,6 +267,9 @@ if (!clientSource.includes('ensureMultiTabSidechat')
   || !clientSource.includes("definition.multiple = true")
   || !clientSource.includes('const definition = registry?.get?.(\'sidechat\')')) {
   throw new Error('The sidechat tab kind must be switched to the host multi-instance mode')
+}
+for (const phrase of ['sidebar.right.tab.menu.item', 'SidebarTabMenuItems', '关闭其他标签', '关闭右侧标签', '关闭左侧标签', 'data-dockkit-strip', 'closeIn']) {
+  if (!clientSource.includes(phrase)) throw new Error(`The sidebar tab batch-close menu is missing: ${phrase}`)
 }
 for (const phrase of ['NativeSidechatComposer', 'conversation.composer.bar', 'resolveNativeSessionBinding', 'data-dsh-harness-native-inputbar', 'new Proxy(target', 'useNativeSource']) {
   if (!clientSource.includes(phrase)) throw new Error(`The sidechat must reuse the native InputBar seam: ${phrase}`)
@@ -700,12 +703,13 @@ const expectedSlots = [
   'conversation.chat.assistant-actions',
   'conversation.input.dock',
   'sidebar.footer.action',
+  'sidebar.right.tab.menu.item',
   'shell.overlay'
 ]
 if (JSON.stringify(injectedSlots) !== JSON.stringify(expectedSlots)) {
   throw new Error(`Unexpected injected slots: ${JSON.stringify(injectedSlots)}`)
 }
-if (registrations.length !== expectedSlots.length) throw new Error('Expected four UI registrations')
+if (registrations.length !== expectedSlots.length) throw new Error('Expected five UI registrations')
 if (!registrations.every(({ config }) => typeof config.id === 'string' && typeof config.inject === 'function')) {
   throw new Error('Every UI registration must have a stable id and injection factory')
 }

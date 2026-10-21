@@ -54,7 +54,7 @@
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.3"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.4"
 ```
 
 如果 `dsh` 不在 PATH，使用 DSH Desktop 自带的 CLI；底层仍是同一条 `dsh plugin` 安装命令：
@@ -63,7 +63,7 @@ dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://gi
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.3"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.4"
 ```
 
 命令使用显式 HTTPS Git 地址，避免 pnpm 将 GitHub 简写解析成 SSH。若本机通过代理联网，请在执行前设置 `HTTP_PROXY`、`HTTPS_PROXY` 或 `ALL_PROXY`。首次安装或当前插件尚未运行时，安装完成后请完全退出并重新打开 DSH Desktop；已运行插件的升级按 DSH 提示刷新页面即可。
@@ -84,6 +84,7 @@ $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
 1. **主对话**：在回答操作栏点击“引用”，或选中文字后选择“添加到对话”；在输入框中补充问题，再发送。
 2. **侧边栏对话**：点击“侧栏问”，或在选中文字工具条选择“在侧边聊天中提问”；侧边栏打开后选择模型、输入问题，再发送。
 3. **编辑重发**：点击用户消息旁的铅笔按钮，在原生输入框修改文字并发送；当前会话会在原位置显示新回答。
+4. **标签管理**：右击右侧栏的标签，菜单中可直接“关闭其他标签”“关闭右侧标签”“关闭左侧标签”。
 
 ## 开发校验
 
@@ -95,7 +96,7 @@ npm test
 
 ## 版本
 
-当前里程碑：**`v0.3.3`**，适配上表中的 DSH Desktop `0.11.0` / `0.12.0` 与 Harness `0.2.0-rc.2`，并内置 `dsh-better-sidebar@0.24.1` 的侧边对话实现。本版修复侧边对话只能打开一个标签的问题：Better Sidebar 把 `sidechat` 注册为单实例页面类型，宿主因此把后续每次打开都视为“显示已打开的那个页面”，只聚焦第一个标签，只有关闭它才能再次打开。现在插件在安装时和每次打开前把该标签类型切换为宿主原生的多实例模式（与内置终端、浏览器相同的 `multiple` 开关），每次引用都会创建独立的侧边对话标签，引用多个名词时可同时并列多个对话。已在 DSH Desktop `0.12.0`（内置 Harness `0.2.0-rc.2`）实测：连续三次在主对话选中文本并点击“在侧边聊天中提问”，侧边栏依次出现三个各自的侧边对话标签，每个标签保留自己的引用注释且互不覆盖。升级 DSH 或 Harness 主版本后，请重新验证原生 Slots、侧边对话 API 和状态接口。
+当前里程碑：**`v0.3.4`**，适配上表中的 DSH Desktop `0.11.0` / `0.12.0` 与 Harness `0.2.0-rc.2`，并内置 `dsh-better-sidebar@0.24.1` 的侧边对话实现。本版在右侧栏标签的右键菜单中增加“关闭其他标签 / 关闭右侧标签 / 关闭左侧标签”：菜单项通过宿主 `sidebar.right.tab.menu.item` 插槽注册，关闭统一走宿主的 `closeIn`，左右顺序以实际标签栏为准，没有可关闭目标时对应项自动置灰。同时保留 v0.3.3 的侧边对话多标签修复：插件在安装时和每次打开前把 `sidechat` 标签类型切换为宿主原生的多实例模式（与内置终端、浏览器相同的 `multiple` 开关），每次引用都会创建独立的侧边对话标签，引用多个名词时可同时并列多个对话。已在 DSH Desktop `0.12.0`（内置 Harness `0.2.0-rc.2`）实测：连续三次在主对话选中文本并点击“在侧边聊天中提问”，侧边栏依次出现三个各自的侧边对话标签，每个标签保留自己的引用注释且互不覆盖；三个批量关闭项在同一窗口验证通过。升级 DSH 或 Harness 主版本后，请重新验证原生 Slots、侧边对话 API 和状态接口。
 
 ## 许可证
 

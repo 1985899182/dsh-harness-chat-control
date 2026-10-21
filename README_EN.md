@@ -53,7 +53,7 @@ Use the DSH plugin command for every installation. Fully quit DSH Desktop, then 
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.3"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.4"
 ```
 
 If `dsh` is not on `PATH`, use the CLI bundled with DSH Desktop; it still executes the same `dsh plugin` install command:
@@ -62,7 +62,7 @@ If `dsh` is not on `PATH`, use the CLI bundled with DSH Desktop; it still execut
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.3"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.4"
 ```
 
 The explicit HTTPS Git URL prevents pnpm from interpreting GitHub shorthand as SSH. If your network requires a proxy, set `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY` before running the command. After a first install, or when the plugin is not already live, fully restart DSH Desktop; for a live upgrade, follow DSH's refresh prompt.
@@ -83,6 +83,7 @@ Then run the standard install command above.
 1. **Main chat**: click **Quote** in an answer's action bar, or select text and choose **Add to chat**; add your question and send it.
 2. **Sidebar chat**: click **Ask in sidebar**, or choose **Ask in sidebar chat** from the selection toolbar; select a model, enter your question, and send it.
 3. **Edit and resend**: click the pencil beside a user message, edit the text in the native composer, and send. The new answer appears at the original position.
+4. **Tab management**: right-click a right-sidebar tab to choose **Close other tabs**, **Close tabs to the right**, or **Close tabs to the left**.
 
 ## Development
 
@@ -94,7 +95,7 @@ This validates the manifest, loader declarations, PowerShell installer, and Java
 
 ## Release
 
-Current milestone: **`v0.3.3`**, validated against DSH Desktop `0.11.0` / `0.12.0` and Harness `0.2.0-rc.2`, with `dsh-better-sidebar@0.24.1` sidechat embedded. This release fixes side chats being limited to a single tab: Better Sidebar registers `sidechat` as a single-instance page kind, so the host treated every later open as "show the page that is already open" and only focused the first tab until it was closed. The plugin now switches that tab kind to the host's native multi-instance mode (the same `multiple` switch the built-in terminal and browser kinds use) at install time and before every open, so each quote opens its own side-chat tab and several quoted terms can sit side by side. Verified on DSH Desktop `0.12.0` (Harness `0.2.0-rc.2`): three consecutive selections sent through "在侧边聊天中提问" produced three independent side-chat tabs, each keeping its own reference annotation. Recheck native Slots, sidechat API, and state interfaces after upgrading DSH or the Harness major version.
+Current milestone: **`v0.3.4`**, validated against DSH Desktop `0.11.0` / `0.12.0` and Harness `0.2.0-rc.2`, with `dsh-better-sidebar@0.24.1` sidechat embedded. This release adds **Close other tabs**, **Close tabs to the right**, and **Close tabs to the left** to the right-sidebar tab context menu: the entries register through the host's `sidebar.right.tab.menu.item` slot, close through the host's `closeIn`, follow the real tab-strip order for left/right, and grey out when there is nothing to close. It keeps the v0.3.3 multi-tab sidechat fix: the plugin switches the `sidechat` tab kind to the host's native multi-instance mode (the same `multiple` switch the built-in terminal and browser kinds use) at install time and before every open, so each quote opens its own side-chat tab and several quoted terms can sit side by side. Verified on DSH Desktop `0.12.0` (Harness `0.2.0-rc.2`): three consecutive selections through "Ask in sidebar chat" produced three independent side-chat tabs, each keeping its own reference annotation, and all three batch-close entries were verified in the same window. Recheck native Slots, sidechat API, and state interfaces after upgrading DSH or the Harness major version.
 
 ## License
 
