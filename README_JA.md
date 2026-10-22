@@ -27,25 +27,25 @@ DSH Desktop の会話操作を ChatGPT に近づけるプラグインです。
 
 - **メイン会話の引用**：回答全体または選択した一部を引用できます。`>` や `---` などの Markdown 記号が本文に混入しません。
 - **標準の注釈チップ**：引用は入力欄の `1 件の注釈` チップとして表示され、送信前に質問を編集したりチップを削除したりできます。
-- **内蔵サイドバー**：`dsh-better-sidebar@0.24.1` の `SideChatView`、転記マッピング、スタイルを直接内蔵・固定しています。Better Sidebar が未導入でも動作し、別バージョンが存在しても本プロジェクトのサイドチャットが有効です。
+- **内蔵サイドバー**：`dsh-better-sidebar@0.28.0` の `SideChatView`、転記マッピング、スタイルを直接内蔵・固定しています。Better Sidebar が未導入でも動作し、別バージョンが存在しても本プロジェクトのサイドチャットが有効です。
 - **サイドバー引用**：Better Sidebar のネイティブな会話レイアウトと DSH のセッション／モデル機能をそのまま利用します。メイン会話とサイドバー会話は独立しています。
 - **モデル選択**：標準のモデル選択は現在のサイドバーセッションだけに適用されます。
 - **編集して再送信**：ユーザーメッセージ横の鉛筆ボタンを押すと元の文章が標準入力欄に入り、送信後は同じ会話の元の位置で表示中の分岐を置き換えます。
 - **生成の停止**：DSH の標準の停止・送信状態を利用し、イベントを二重送信しません。
 
-引用チップ、入口、セッションのルーティングに加え、サイドバーのレイアウト、転記、子セッションのライフサイクルは固定した Better Sidebar 0.24.1 のソースを使うため、外部プラグインのバージョン競合を避けられます。
+引用チップ、入口、セッションのルーティングに加え、サイドバーのレイアウト、転記、子セッションのライフサイクルは固定した Better Sidebar 0.28.0 のソースを使うため、外部プラグインのバージョン競合を避けられます。
 
 ## 対応バージョン
 
 | コンポーネント | バージョン |
 | --- | --- |
-| DSH Desktop（Windows） | `0.11.0` |
-| DeepSeek Harness / `@deepseek-ai/dsh` | `0.2.0-rc.2` |
-| `dsh-better-sidebar` | **`0.24.1`** |
+| DSH Desktop（Windows） | `0.12.1` |
+| DeepSeek Harness / `@deepseek-ai/dsh` | `0.2.1-rc.2` |
+| `dsh-better-sidebar` | **`0.28.0`** |
 | Node.js | `>=20` |
 | pnpm | `10.x` または `11.x` |
 
-`dsh-better-sidebar@0.24.1` は Harness `0.2.0-rc.2` 向けです。DSH Desktop `0.11.0`（Harness `0.2.0-rc.2` 同梱）では Sidebar を `0.24.1` に固定してください。
+`dsh-better-sidebar@0.28.0` は Harness `0.2.1-rc.2` 向けです。DSH Desktop `0.12.1`（Harness `0.2.1-rc.2` 同梱）では Sidebar を `0.28.0` に固定してください。Harness `0.2.1-rc.2` は `webRuntime` サービスを廃止したため、本プラグインは `connection.requestRejection()` でリクエストを許可します。
 
 ## インストール
 
@@ -53,7 +53,7 @@ DSH Desktop の会話操作を ChatGPT に近づけるプラグインです。
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.4"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.5"
 ```
 
 `dsh` が `PATH` にない場合は、DSH Desktop に付属する CLI を使います。実行されるのは同じ `dsh plugin` インストールコマンドです。
@@ -62,7 +62,7 @@ dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://gi
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.4"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.5"
 ```
 
 明示的な HTTPS Git URL を使うため、pnpm が GitHub の短縮記法を SSH として解釈しません。プロキシが必要な環境では、実行前に `HTTP_PROXY`、`HTTPS_PROXY`、または `ALL_PROXY` を設定してください。初回インストール、またはプラグインが live でない状態での更新後は DSH Desktop を完全に再起動し、live 更新では DSH の更新案内に従ってページを再読み込みします。
@@ -73,7 +73,7 @@ $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty dsh-better-sidebar@0.24.1
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty dsh-better-sidebar@0.28.0
 ```
 
 その後、上記の標準インストールコマンドを実行します。
@@ -95,7 +95,7 @@ npm test
 
 ## リリース
 
-現在のマイルストーンは **`v0.3.4`** です。DSH Desktop `0.11.0` / `0.12.0` と Harness `0.2.0-rc.2`、内蔵した `dsh-better-sidebar@0.24.1` のサイドチャットで検証しています。本版は右サイドバーのタブ右クリックメニューに **他のタブを閉じる**、**右側のタブを閉じる**、**左側のタブを閉じる** を追加します。項目はホストの `sidebar.right.tab.menu.item` スロットで登録し、閉じる処理はホストの `closeIn` を通し、左右の順序は実際のタブバーに従い、閉じる対象がないときは自動的に無効化されます。v0.3.3 の複数タブ修正も維持しています：プラグインはインストール時と各オープンの直前に、`sidechat` タブ種別をホスト本来の複数インスタンスモード（内蔵ターミナル／ブラウザと同じ `multiple` スイッチ）へ切り替えるため、引用のたびに独立したサイドチャットタブが開きます。DSH Desktop `0.12.0`（Harness `0.2.0-rc.2`）で、3 回連続のサイドチャット引用が 3 つの独立タブになり、各タブが自分の引用注釈を保持すること、および 3 つの一括クローズ項目を同じウィンドウで確認しました。DSH または Harness のメジャーバージョンを更新した場合は、標準 Slot、サイドチャット API、状態インターフェースを再確認してください。
+現在のマイルストーンは **`v0.3.5`** です。DSH Desktop `0.11.0` / `0.12.0` と Harness `0.2.0-rc.2`、内蔵した `dsh-better-sidebar@0.28.0` のサイドチャットで検証しています。本版は右サイドバーのタブ右クリックメニューに **他のタブを閉じる**、**右側のタブを閉じる**、**左側のタブを閉じる** を追加します。項目はホストの `sidebar.right.tab.menu.item` スロットで登録し、閉じる処理はホストの `closeIn` を通し、左右の順序は実際のタブバーに従い、閉じる対象がないときは自動的に無効化されます。v0.3.3 の複数タブ修正も維持しています：プラグインはインストール時と各オープンの直前に、`sidechat` タブ種別をホスト本来の複数インスタンスモード（内蔵ターミナル／ブラウザと同じ `multiple` スイッチ）へ切り替えるため、引用のたびに独立したサイドチャットタブが開きます。DSH Desktop `0.12.0`（Harness `0.2.0-rc.2`）で、3 回連続のサイドチャット引用が 3 つの独立タブになり、各タブが自分の引用注釈を保持すること、および 3 つの一括クローズ項目を同じウィンドウで確認しました。DSH または Harness のメジャーバージョンを更新した場合は、標準 Slot、サイドチャット API、状態インターフェースを再確認してください。
 
 ## ライセンス
 

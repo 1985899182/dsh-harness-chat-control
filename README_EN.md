@@ -27,25 +27,25 @@ Click **Ask in sidebar** or choose **Ask in sidebar chat** from the text-selecti
 
 - **Main-chat quotes**: quote a full answer or a selected fragment without leaking Markdown markers such as `>` or `---` into the prompt.
 - **Native annotation chip**: the composer shows the quote as a `1 annotation` chip. You can edit the question or remove the chip before sending.
-- **Embedded sidebar**: embeds and pins the `dsh-better-sidebar@0.24.1` `SideChatView`, transcript mapping, and styles. It works without Better Sidebar installed, and this project's sidechat remains authoritative when another version is present.
+- **Embedded sidebar**: embeds and pins the `dsh-better-sidebar@0.28.0` `SideChatView`, transcript mapping, and styles. It works without Better Sidebar installed, and this project's sidechat remains authoritative when another version is present.
 - **Sidebar quote**: keeps Better Sidebar's native conversation layout and DSH's session/model capabilities. Main and sidebar sessions stay independent.
 - **Model selection**: the native model selector applies only to the current sidebar session.
 - **Edit and resend**: click the pencil next to a user message to load the original text into the native composer. Sending replaces the visible branch in the same conversation instead of creating duplicate chats.
 - **Stop generation**: reuses DSH's native stop/send state and does not intercept or submit native events twice.
 
-The plugin adds the quote chip, entry points, and session routing; the sidebar layout, transcript, and child-session lifecycle come from the pinned Better Sidebar 0.24.1 source so another plugin version cannot take over.
+The plugin adds the quote chip, entry points, and session routing; the sidebar layout, transcript, and child-session lifecycle come from the pinned Better Sidebar 0.28.0 source so another plugin version cannot take over.
 
 ## Compatibility
 
 | Component | Version |
 | --- | --- |
-| DSH Desktop (Windows) | `0.11.0` |
-| DeepSeek Harness / `@deepseek-ai/dsh` | `0.2.0-rc.2` |
-| `dsh-better-sidebar` | **`0.24.1`** |
+| DSH Desktop (Windows) | `0.12.1` |
+| DeepSeek Harness / `@deepseek-ai/dsh` | `0.2.1-rc.2` |
+| `dsh-better-sidebar` | **`0.28.0`** |
 | Node.js | `>=20` |
 | pnpm | `10.x` or `11.x` |
 
-`dsh-better-sidebar@0.24.1` targets Harness `0.2.0-rc.2`. Pin Sidebar to `0.24.1` on DSH Desktop `0.11.0` (which ships Harness `0.2.0-rc.2`).
+`dsh-better-sidebar@0.28.0` targets Harness `0.2.1-rc.2`. Pin Sidebar to `0.28.0` on DSH Desktop `0.12.1` (which ships Harness `0.2.1-rc.2`). Harness `0.2.1-rc.2` removed the `webRuntime` service; this plugin now admits requests through `connection.requestRejection()`.
 
 ## Install
 
@@ -53,7 +53,7 @@ Use the DSH plugin command for every installation. Fully quit DSH Desktop, then 
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.4"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.5"
 ```
 
 If `dsh` is not on `PATH`, use the CLI bundled with DSH Desktop; it still executes the same `dsh plugin` install command:
@@ -62,7 +62,7 @@ If `dsh` is not on `PATH`, use the CLI bundled with DSH Desktop; it still execut
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.4"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.5"
 ```
 
 The explicit HTTPS Git URL prevents pnpm from interpreting GitHub shorthand as SSH. If your network requires a proxy, set `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY` before running the command. After a first install, or when the plugin is not already live, fully restart DSH Desktop; for a live upgrade, follow DSH's refresh prompt.
@@ -73,7 +73,7 @@ If the profile already uses Sidebar `0.24.x`, use the same `dsh plugin` command 
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty dsh-better-sidebar@0.24.1
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty dsh-better-sidebar@0.28.0
 ```
 
 Then run the standard install command above.
@@ -95,7 +95,7 @@ This validates the manifest, loader declarations, PowerShell installer, and Java
 
 ## Release
 
-Current milestone: **`v0.3.4`**, validated against DSH Desktop `0.11.0` / `0.12.0` and Harness `0.2.0-rc.2`, with `dsh-better-sidebar@0.24.1` sidechat embedded. This release adds **Close other tabs**, **Close tabs to the right**, and **Close tabs to the left** to the right-sidebar tab context menu: the entries register through the host's `sidebar.right.tab.menu.item` slot, close through the host's `closeIn`, follow the real tab-strip order for left/right, and grey out when there is nothing to close. It keeps the v0.3.3 multi-tab sidechat fix: the plugin switches the `sidechat` tab kind to the host's native multi-instance mode (the same `multiple` switch the built-in terminal and browser kinds use) at install time and before every open, so each quote opens its own side-chat tab and several quoted terms can sit side by side. Verified on DSH Desktop `0.12.0` (Harness `0.2.0-rc.2`): three consecutive selections through "Ask in sidebar chat" produced three independent side-chat tabs, each keeping its own reference annotation, and all three batch-close entries were verified in the same window. Recheck native Slots, sidechat API, and state interfaces after upgrading DSH or the Harness major version.
+Current milestone: **`v0.3.5`**, validated against DSH Desktop `0.11.0` / `0.12.0` and Harness `0.2.0-rc.2`, with `dsh-better-sidebar@0.28.0` sidechat embedded. This release adds **Close other tabs**, **Close tabs to the right**, and **Close tabs to the left** to the right-sidebar tab context menu: the entries register through the host's `sidebar.right.tab.menu.item` slot, close through the host's `closeIn`, follow the real tab-strip order for left/right, and grey out when there is nothing to close. It keeps the v0.3.3 multi-tab sidechat fix: the plugin switches the `sidechat` tab kind to the host's native multi-instance mode (the same `multiple` switch the built-in terminal and browser kinds use) at install time and before every open, so each quote opens its own side-chat tab and several quoted terms can sit side by side. Verified on DSH Desktop `0.12.0` (Harness `0.2.0-rc.2`): three consecutive selections through "Ask in sidebar chat" produced three independent side-chat tabs, each keeping its own reference annotation, and all three batch-close entries were verified in the same window. Recheck native Slots, sidechat API, and state interfaces after upgrading DSH or the Harness major version.
 
 ## License
 

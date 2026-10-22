@@ -1,19 +1,19 @@
-# v0.3.4 — 侧边栏标签批量关闭里程碑
+# v0.3.5 — Harness 0.2.1-rc.2 适配里程碑
 
 状态：**稳定基线 / Milestone**
 
 ## 适配范围
 
-- DSH Desktop：`0.11.0` / `0.12.0`（Windows）
-- 内置 DeepSeek Harness：`0.2.0-rc.2`
-- `dsh-better-sidebar`：`0.24.1`
+- DSH Desktop：`0.12.1`（Windows）
+- 内置 DeepSeek Harness：`0.2.1-rc.2`
+- `dsh-better-sidebar`：`0.28.0`
 - Node.js：`>=20`
 - pnpm：`10.x`（桌面版 profile 首选；`11.x` 可用）
 
 ## 已验证能力
 
-- 右侧栏标签的右键菜单在宿主原生“关闭”项下方新增“关闭其他标签 / 关闭右侧标签 / 关闭左侧标签”，通过 `sidebar.right.tab.menu.item` 插槽注册；已在 DSH Desktop `0.12.0` 实测三种批量关闭，左右顺序与标签栏一致，无可关闭目标时对应项置灰。
-- 在主对话连续选中不同文本并选择“在侧边聊天中提问”时，侧边栏为每次引用创建独立的侧边对话标签；未关闭已有标签也能继续新增，各标签保留各自的引用注释、模型选择和输入草稿。已在 DSH Desktop `0.12.0` 实测连续三次引用产生三个独立标签。
+- 右侧栏标签的右键菜单在宿主原生“关闭”项下方新增“关闭其他标签 / 关闭右侧标签 / 关闭左侧标签”，通过 `sidebar.right.tab.menu.item` 插槽注册；已在 DSH Desktop `0.12.1` 实测三种批量关闭，左右顺序与标签栏一致，无可关闭目标时对应项置灰。
+- 在主对话连续选中不同文本并选择“在侧边聊天中提问”时，侧边栏为每次引用创建独立的侧边对话标签；未关闭已有标签也能继续新增，各标签保留各自的引用注释、模型选择和输入草稿。已在 DSH Desktop `0.12.1` 实测连续引用产生独立标签。
 - 主对话用户消息编辑后，在原位置覆盖显示新消息和新回答，不在旧回答下追加重复分支。
 - 普通刷新和 DSH 内置 HMR 后仍保持同一套原生 ChatView 投影。
 - 引用以原生注释胶囊进入主对话和侧边对话，发送前可编辑，正文不被 Markdown 符号污染。
@@ -33,6 +33,19 @@
 - 「添加到对话」与「在侧边聊天中提问」两个入口都能把选区转换成原生注释胶囊（`data-composer-chip="dsh-harness-chat-control"`，`title="1 条注释"`）；侧边入口还会把引用写进子会话作用域保留快照 `retainedBy: {"dsh-harness-chat-control:sidechat": 1}`。
 - 侧边对话「对话 / 轨迹」标签往返切换复用同一子会话，composer 始终可用；连续 3 次往返后作用域保留计数稳定为 1，未出现引用计数累积或泄漏。
 - 暂停/停止后编辑用户消息不再报错：写入的位置替换事件使用宿主唯一接受的精确形状，日志中出现 `{ op: 'replace', startSeq, endSeq }`，不再产生 `session event "user/message" carries an invalid replace surfaceOp`。
+
+## 本版新增：Harness 0.2.1-rc.2 适配
+
+宿主升级到 `0.2.1-rc.2` 后移除了 `webRuntime` 服务，并把准入判断收敛到连接服务，插件因此有两处必须同步：
+
+1. **移除 `webRuntime` 注入**：`cordis.patch.yml`、安装器写入的 profile patch 层与 bundle patch 三处都不再声明 `webRuntime`。旧声明会让启动审计直接失败（`startup failed: 2 required plugins did not activate`），插件整体不激活。
+2. **准入改用 `connection.requestRejection(req)`**：`lib/index.js` 的 `trustedRequest()` 先调用连接服务，返回 `undefined` 视为通过、`401/403` 视为拒绝；宿主未提供该服务时才回退到原来的 Host/Origin 校验。
+
+同版还给模型座位新增了 `renderSlot` 契约：`ModelSelect` 会调用 `renderSlot("conversation.input.model.label", { provider, model, placement, selected }, { fallback: model.name })`，缺省该 prop 会抛 `renderSlot is not a function`。侧边对话的 `NativeSidechatComposer` 现在自建一个透传渲染器：`model.label` 直接返回 `fallback`（模型名），`model` / `plan` / `attachments` 三个座位则把同一个渲染器继续传下去，因此宿主 `InputBar` 在侧边对话里与主对话使用完全相同的座位实现。
+
+`dsh-better-sidebar` 同步升级到 `0.28.0`：`openTab(seed, scope)` 与 `features: ['targetedOpen','stateSubscription']` 保持兼容，`sidebarRightTabs.get('sidechat').multiple` 仍是宿主支持的多实例开关，右键批量关闭所用的 `sidebar.right.tab.menu.item` 与 `closeIn` 也未变化。
+
+桌面端会用批量 `??` 资源地址和包自身的单资源地址各执行一次同一份客户端 bundle，第二次注册私有 `dsh-harness-chat-control-sidechat` 模块时 `client-modules` 会抛 `duplicate factory registration`。两次注册内容相同，第一次注册仍然生效，因此 bundle 现在统一经由 `loadBundle()` 注册，只忽略这一类重复注册，其他加载错误照旧抛出，控制台不再出现该未捕获异常。
 
 ## 本版新增：侧边栏标签批量关闭
 

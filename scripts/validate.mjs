@@ -31,7 +31,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.3.4') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.3.5') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -57,24 +57,24 @@ const desktopClientDependencies = [
   'dsh-better-sidebar'
 ]
 if (JSON.stringify(manifest.dsh.client.inject) !== JSON.stringify(desktopClientDependencies)) {
-  throw new Error('Client injection order does not match the DSH Desktop 0.2.0-rc.2 contract')
+  throw new Error('Client injection order does not match the DSH Desktop 0.2.1-rc.2 contract')
 }
 if (manifest.peerDependencies?.['@deepseek-ai/dsh-client-runtime'] !== undefined) {
   throw new Error('The obsolete dsh-client-runtime dependency must not be declared')
 }
-if (manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-input-trigger'] !== '0.2.0-rc.2') {
+if (manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-input-trigger'] !== '0.2.1-rc.2') {
   throw new Error('The native reference-chip input trigger dependency is missing')
 }
-if (manifest.dependencies?.['dsh-better-sidebar'] !== '0.24.1') {
-  throw new Error('The exact Better Sidebar 0.24.1 dependency is missing')
+if (manifest.dependencies?.['dsh-better-sidebar'] !== '0.28.0') {
+  throw new Error('The exact Better Sidebar 0.28.0 dependency is missing')
 }
-if (manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-primitives'] !== '0.2.0-rc.2'
-  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-locale'] !== '0.2.0-rc.2'
-  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-slots'] !== '0.2.0-rc.2'
-  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-modules'] !== '0.2.0-rc.2'
-  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-model-selection'] !== '0.2.0-rc.2'
-  || manifest.peerDependencies?.['@deepseek-ai/dsh-llm'] !== '0.2.0-rc.2'
-  || manifest.peerDependencies?.['@deepseek-ai/dsh-subagent'] !== '0.2.0-rc.2') {
+if (manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-primitives'] !== '0.2.1-rc.2'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-locale'] !== '0.2.1-rc.2'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-slots'] !== '0.2.1-rc.2'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-modules'] !== '0.2.1-rc.2'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-client-ui-model-selection'] !== '0.2.1-rc.2'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-llm'] !== '0.2.1-rc.2'
+  || manifest.peerDependencies?.['@deepseek-ai/dsh-subagent'] !== '0.2.1-rc.2') {
   throw new Error('The owned sidechat host/client peers are missing')
 }
 
@@ -84,7 +84,7 @@ const generationInstaller = readFileSync(resolve(root, 'scripts', 'install-gener
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "git+https://github.com/$Repository.git#$Ref"')) {
   throw new Error('Installer must use the explicit HTTPS GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.3.4'")) {
+if (!installer.includes("[string]$Ref = 'v0.3.5'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!generationInstaller.includes("ref: DEFAULT_REF") || !generationInstaller.includes('git+https://github.com/${repository}.git#${ref}')) {
@@ -114,7 +114,7 @@ for (const phrase of [
   'Normalize-ClientArtifactText',
   'Get-ClientArtifactHash',
   'Warn-IncompatibleBetterSidebar',
-  'dsh-better-sidebar@0.24.1',
+  'dsh-better-sidebar@0.28.0',
   'ConvertTo-HttpProxyUri',
   'Get-WinInetProxyUri',
   'Initialize-ChildProcessNetwork',
@@ -130,11 +130,14 @@ for (const phrase of [
 ]) {
   if (!installer.includes(phrase)) throw new Error(`Installer is missing the live-install seam: ${phrase}`)
 }
-if (!readFileSync(resolve(root, 'cordis.patch.yml'), 'utf8').includes('inject: [clientModules, webServer, webRuntime')) {
+if (!readFileSync(resolve(root, 'cordis.patch.yml'), 'utf8').includes('inject: [clientModules, webServer')) {
   throw new Error('Host patch must wait for the clientModules service before mounting')
 }
-if (!readFileSync(resolve(root, 'cordis.patch.yml'), 'utf8').includes('webServer, webRuntime')) {
+if (!readFileSync(resolve(root, 'cordis.patch.yml'), 'utf8').includes('webServer, llm')) {
   throw new Error('Host patch must inject the web route services for sidechat model selection')
+}
+if (readFileSync(resolve(root, 'cordis.patch.yml'), 'utf8').includes('webRuntime')) {
+  throw new Error('Harness 0.2.1-rc.2 removed the webRuntime service; it must not be injected')
 }
 if (!readFileSync(resolve(root, 'cordis.patch.yml'), 'utf8').includes('sessionController, agents')) {
   throw new Error('Host patch must expose the live Agent service for in-place message replacement')
@@ -143,12 +146,12 @@ if (!readFileSync(resolve(root, 'README.md'), 'utf8').includes('dsh plugin --pro
   throw new Error('README must document the standard dsh plugin installer')
 }
 const readme = readFileSync(resolve(root, 'README.md'), 'utf8')
-for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.24.1', '侧边原生对话栏', '铅笔按钮', '卡死', 'README_EN.md', 'README_JA.md', 'README_KO.md']) {
+for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.28.0', '侧边原生对话栏', '铅笔按钮', '卡死', 'README_EN.md', 'README_JA.md', 'README_KO.md']) {
   if (!readme.includes(phrase)) throw new Error(`README is missing the native reference/sidechat note: ${phrase}`)
 }
 for (const relative of ['README_EN.md', 'README_JA.md', 'README_KO.md']) {
   const translated = readFileSync(resolve(root, relative), 'utf8')
-  for (const phrase of ['dsh plugin --profile web add --save-exact --allow-build=node-pty', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.3.4']) {
+  for (const phrase of ['dsh plugin --profile web add --save-exact --allow-build=node-pty', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.3.5']) {
     if (!translated.includes(phrase)) throw new Error(`${relative} is missing translated install/example content: ${phrase}`)
   }
 }
@@ -267,6 +270,15 @@ if (!clientSource.includes('ensureMultiTabSidechat')
   || !clientSource.includes("definition.multiple = true")
   || !clientSource.includes('const definition = registry?.get?.(\'sidechat\')')) {
   throw new Error('The sidechat tab kind must be switched to the host multi-instance mode')
+}
+for (const phrase of ['const renderSlotRef = React.useRef(undefined)', "key === 'conversation.input.model.label'", 'options.fallback', 'renderSlot: pass']) {
+  if (!clientSource.includes(phrase)) throw new Error(`The Harness 0.2.1-rc.2 renderSlot seat contract is missing: ${phrase}`)
+}
+for (const phrase of ['function loadBundle(registration)', "!message.includes('duplicate factory registration')", 'loadBundle({']) {
+  if (!clientSource.includes(phrase)) throw new Error(`The duplicate bundle execution guard is missing: ${phrase}`)
+}
+if ((clientSource.match(/window\.__ModuleLoader__\.load\(/g) ?? []).length !== 1) {
+  throw new Error('Every bundle registration must go through the duplicate-tolerant loadBundle helper')
 }
 for (const phrase of ['sidebar.right.tab.menu.item', 'SidebarTabMenuItems', '关闭其他标签', '关闭右侧标签', '关闭左侧标签', 'data-dockkit-strip', 'closeIn']) {
   if (!clientSource.includes(phrase)) throw new Error(`The sidebar tab batch-close menu is missing: ${phrase}`)
@@ -407,6 +419,14 @@ const hostContext = {
         }
       }
     }
+    if (name === 'connection') {
+      // Harness 0.2.1-rc.2 moved admission here: a status code means rejected.
+      return {
+        requestRejection(request) {
+          return request?.headers?.origin === 'https://evil.example' ? 403 : undefined
+        }
+      }
+    }
     if (name === 'webRuntime') return { trustedHosts: [] }
     if (name === 'agents') return hostAgents
     if (name === 'attachments') {
@@ -471,6 +491,15 @@ await sessionEditHandler(hostRequest({
 }), editResponse)
 if (editResponse.status !== 200 || editResponse.body?.ok !== true) {
   throw new Error(`Host session-edit route did not arm the live session: ${JSON.stringify(editResponse)}`)
+}
+const rejectedResponse = hostResponse()
+await sessionEditHandler({
+  method: 'POST',
+  headers: { host: '127.0.0.1', origin: 'https://evil.example' },
+  async *[Symbol.asyncIterator]() { yield '{}' }
+}, rejectedResponse)
+if (rejectedResponse.status !== 403) {
+  throw new Error(`The connection admission fence was not applied: ${JSON.stringify(rejectedResponse)}`)
 }
 hostSession.append('user/message', {
   source: { kind: 'user' },

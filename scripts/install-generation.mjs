@@ -9,16 +9,17 @@
  * ships with DSH Desktop, then publishes the generation for the next launch.
  */
 
-import { existsSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { existsSync, readdirSync } from 'node:fs'
 import { copyFile, readFile, writeFile } from 'node:fs/promises'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 
 const PLUGIN_NAME = 'dsh-harness-chat-control'
 const DEFAULT_REPOSITORY = '1985899182/dsh-harness-chat-control'
 const DEFAULT_PROFILE = 'web'
 const DEFAULT_DESKTOP_ROOT = 'D:\\DSH\\DSH Desktop'
-const DEFAULT_REF = 'v0.3.4'
+const DEFAULT_REF = 'v0.3.5'
 
 function githubGitSpec(repository, ref) {
   return `git+https://github.com/${repository}.git#${ref}`
@@ -149,7 +150,7 @@ async function synchronizeProfilePatch(profileDir) {
     if (error?.code === 'ENOENT') return false
     throw error
   }
-  const inject = '  inject: [clientModules, webServer, webRuntime, llm, sessionController, agents, agentPresets, sessionPersistence, sessionTitle]'
+  const inject = '  inject: [clientModules, webServer, llm, sessionController, agents, agentPresets, sessionPersistence, sessionTitle]'
   const pattern = /(^|\n)(\s*- id:\s*harness-chat-control\b[\s\S]*?)(\n\s+inject:\s*\[[^\n]*\])/u
   if (!pattern.test(text)) return false
   const updated = text.replace(pattern, (_match, lineStart, prefix) => `${lineStart}${prefix}\n${inject}`)
@@ -218,6 +219,25 @@ const unpackedNodePath = join(
   'node.exe',
 )
 const nodePath = existsSync(unpackedNodePath) ? unpackedNodePath : process.execPath
+// DSH Desktop 0.12.1 packs the market installer into resources/app.asar.
+// Plain Node cannot read inside an asar archive, so re-enter this script
+// through the Desktop Electron binary in Node mode, whose fs layer resolves
+// asar paths.  Older layouts keep the installer on disk and skip this step.
+if (!existsSync(desktopModulePath) && process.versions.electron === undefined) {
+  const asarPath = join(desktopRoot, 'resources', 'app.asar')
+  const desktopExecutable = existsSync(desktopRoot)
+    ? readdirSync(desktopRoot).find((name) => name.toLowerCase().endsWith('.exe') && !name.toLowerCase().startsWith('uninstall'))
+    : undefined
+  if (existsSync(asarPath) && desktopExecutable !== undefined) {
+    const child = spawnSync(
+      join(desktopRoot, desktopExecutable),
+      [fileURLToPath(import.meta.url), ...process.argv.slice(2)],
+      { stdio: 'inherit', env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' } },
+    )
+    if (child.error !== undefined) throw child.error
+    process.exit(child.status ?? 1)
+  }
+}
 if (!existsSync(desktopModulePath)) {
   throw new Error(`DSH Desktop generation installer not found: ${desktopModulePath}`)
 }
