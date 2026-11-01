@@ -53,7 +53,7 @@ Use the DSH plugin command for every installation. Fully quit DSH Desktop, then 
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.6"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.7"
 ```
 
 If `dsh` is not on `PATH`, use the CLI bundled with DSH Desktop; it still executes the same `dsh plugin` install command:
@@ -62,7 +62,7 @@ If `dsh` is not on `PATH`, use the CLI bundled with DSH Desktop; it still execut
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.6"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.7"
 ```
 
 The explicit HTTPS Git URL prevents pnpm from interpreting GitHub shorthand as SSH. If your network requires a proxy, set `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY` before running the command. After a first install, or when the plugin is not already live, fully restart DSH Desktop; for a live upgrade, follow DSH's refresh prompt.
@@ -95,7 +95,7 @@ This validates the manifest, loader declarations, PowerShell installer, and Java
 
 ## Release
 
-Current milestone: **`v0.3.6`**, validated against DSH Desktop `0.11.0` / `0.12.0` and Harness `0.2.0-rc.2`, with `dsh-better-sidebar@0.28.0` sidechat embedded. This release does two things. First, the side composer drops its image entry point: it accepts text and quoted snippets only, and the host-side image admission path is gone as well. Second, it fixes the case where a side question asked while the main conversation is still generating was overwritten by the main question: a side thread now inherits only the parent completed turns, while the still-open turn (the main question plus the half-streamed answer) travels as reference-only text inside the boundary injection and never lands in the side log as one of its own user messages, so the main conversation and every side conversation stay independent. `npm test` gained a regression case for exactly that scenario: the side seed must not contain the open question or the partial answer, the question must appear only in the boundary injection, and the side thread latest user message must be the side question. Dead code left over from the image path and the retired thread registry was removed. Recheck native Slots, sidechat API, and state interfaces after upgrading DSH or the Harness major version.
+Current milestone: **`v0.3.7`**, validated against DSH Desktop `0.11.0` / `0.12.0` and Harness `0.2.0-rc.2`, with `dsh-better-sidebar@0.28.0` sidechat embedded. This release does two things. First, the side composer drops its image entry point: it accepts text and quoted snippets only, and the host-side image admission path is gone as well. Second, it fixes the case where a side question asked while the main conversation is still generating was overwritten by the main question: a side thread now inherits only the parent completed turns, while the still-open turn (the main question plus the half-streamed answer) travels as reference-only text inside the boundary injection and never lands in the side log as one of its own user messages, so the main conversation and every side conversation stay independent. `npm test` gained a regression case for exactly that scenario: the side seed must not contain the open question or the partial answer, the question must appear only in the boundary injection, and the side thread latest user message must be the side question. Dead code left over from the image path and the retired thread registry was removed. v0.3.7 restores the Markdown rendering helper that this cleanup removed by mistake, which made the side chat panel fail to render with "markdownTextProps is not defined"; verified on the desktop build. Recheck native Slots, sidechat API, and state interfaces after upgrading DSH or the Harness major version.
 
 ## License
 

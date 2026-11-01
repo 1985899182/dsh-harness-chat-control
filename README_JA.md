@@ -53,7 +53,7 @@ DSH Desktop の会話操作を ChatGPT に近づけるプラグインです。
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.6"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.7"
 ```
 
 `dsh` が `PATH` にない場合は、DSH Desktop に付属する CLI を使います。実行されるのは同じ `dsh plugin` インストールコマンドです。
@@ -62,7 +62,7 @@ dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://gi
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.6"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.7"
 ```
 
 明示的な HTTPS Git URL を使うため、pnpm が GitHub の短縮記法を SSH として解釈しません。プロキシが必要な環境では、実行前に `HTTP_PROXY`、`HTTPS_PROXY`、または `ALL_PROXY` を設定してください。初回インストール、またはプラグインが live でない状態での更新後は DSH Desktop を完全に再起動し、live 更新では DSH の更新案内に従ってページを再読み込みします。
@@ -95,7 +95,7 @@ npm test
 
 ## リリース
 
-現在のマイルストーンは **`v0.3.6`** です。DSH Desktop `0.11.0` / `0.12.0` と Harness `0.2.0-rc.2`、内蔵した `dsh-better-sidebar@0.28.0` のサイドチャットで検証しています。本版は二点に絞っています。第一に、サイドチャットの入力欄から画像の入口を削除し、テキストと引用スニペットのみを受け付けます（ホスト側の画像受け入れ経路も削除）。第二に、メイン会話が生成中にサイドで質問するとメインの質問に上書きされる問題を修正しました。サイド会話は親の完了済みターンだけを継承し、進行中のターン（メインの質問と途中までの回答）は境界注入内の「参照のみ」テキストとして渡され、サイド会話自身のユーザーメッセージとしては保存されません。これによりメイン会話と各サイド会話は独立して動作します。`npm test` にはこのシナリオの回帰ケースを追加し、サイドの seed に進行中の質問や途中回答が含まれないこと、質問が境界注入にのみ現れること、サイド会話の最新ユーザーメッセージがサイドの質問であることを検証します。画像経路と廃止したスレッド登録表に残っていた未使用コードも削除しました。DSH または Harness のメジャーバージョンを更新した場合は、標準 Slot、サイドチャット API、状態インターフェースを再確認してください。
+現在のマイルストーンは **`v0.3.7`** です。DSH Desktop `0.11.0` / `0.12.0` と Harness `0.2.0-rc.2`、内蔵した `dsh-better-sidebar@0.28.0` のサイドチャットで検証しています。本版は二点に絞っています。第一に、サイドチャットの入力欄から画像の入口を削除し、テキストと引用スニペットのみを受け付けます（ホスト側の画像受け入れ経路も削除）。第二に、メイン会話が生成中にサイドで質問するとメインの質問に上書きされる問題を修正しました。サイド会話は親の完了済みターンだけを継承し、進行中のターン（メインの質問と途中までの回答）は境界注入内の「参照のみ」テキストとして渡され、サイド会話自身のユーザーメッセージとしては保存されません。これによりメイン会話と各サイド会話は独立して動作します。`npm test` にはこのシナリオの回帰ケースを追加し、サイドの seed に進行中の質問や途中回答が含まれないこと、質問が境界注入にのみ現れること、サイド会話の最新ユーザーメッセージがサイドの質問であることを検証します。画像経路と廃止したスレッド登録表に残っていた未使用コードも削除しました。v0.3.7 では、その整理で誤って削除した Markdown レンダリング用ヘルパーを復元しました（これがないとサイドパネルが「markdownTextProps is not defined」で描画に失敗します）。デスクトップ版で実機確認済みです。DSH または Harness のメジャーバージョンを更新した場合は、標準 Slot、サイドチャット API、状態インターフェースを再確認してください。
 
 ## ライセンス
 
