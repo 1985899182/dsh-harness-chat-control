@@ -48,7 +48,7 @@
 ```powershell
 # 1. 先完全退出 DSH Desktop
 # 2. 用官方插件命令装入 web profile
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.9"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.10"
 # 3. 重新打开 DSH Desktop
 ```
 
@@ -58,7 +58,7 @@ dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://gi
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
 $env:PATH = "$env:DSH_HOME\.desktop-bin;$env:PATH"
 $cli = '<DSH Desktop 安装目录>\resources\app.asar\node_modules\@deepseek-ai\dsh\lib\bin.js'
-& "$env:DSH_HOME\.desktop-bin\node.cmd" $cli plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.9"
+& "$env:DSH_HOME\.desktop-bin\node.cmd" $cli plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.10"
 ```
 
 出错时按现象改方向：
@@ -73,6 +73,7 @@ $cli = '<DSH Desktop 安装目录>\resources\app.asar\node_modules\@deepseek-ai\
 
 ## 更新记录
 
+- **v0.3.10**：侧边对话可以直接选图或粘贴截图提问；新增宿主兼容清单与接缝自动检测（随 `npm test` 运行）。
 - **v0.3.9**：侧边输入框隐藏不可用的「+」和宿主自带的上下文占用标识；生成中点「编辑消息」会先停止再回填。
 - **v0.3.8**：侧边对话独立运行，引用不再覆盖彼此的问题；整理代码，移除无用链路。
 - 更早版本见 [MILESTONE.md](MILESTONE.md)。
