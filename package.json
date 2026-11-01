@@ -1,7 +1,7 @@
 {
   "name": "dsh-harness-chat-control",
   "version": "0.3.9",
-  "description": "ChatGPT-style stop, revise, native annotation-chip quote, and an owned Better Sidebar 0.28.0 sidechat with reference-aware follow-up questions.",
+  "description": "Selection quoting, independent side-chat follow-ups, stop-and-rewrite during generation, and batch tab close for DSH Desktop.",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
