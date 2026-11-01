@@ -54,7 +54,7 @@
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.8"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.9"
 ```
 
 如果 `dsh` 不在 PATH，使用 DSH Desktop 自带的 CLI；底层仍是同一条 `dsh plugin` 安装命令：
@@ -63,7 +63,7 @@ dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://gi
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.8"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.9"
 ```
 
 命令使用显式 HTTPS Git 地址，避免 pnpm 将 GitHub 简写解析成 SSH。若本机通过代理联网，请在执行前设置 `HTTP_PROXY`、`HTTPS_PROXY` 或 `ALL_PROXY`。首次安装或当前插件尚未运行时，安装完成后请完全退出并重新打开 DSH Desktop；已运行插件的升级按 DSH 提示刷新页面即可。
@@ -96,7 +96,7 @@ npm test
 
 ## 版本
 
-当前里程碑：**`v0.3.8`**，适配上表中的 DSH Desktop `0.11.0` / `0.12.0` 与 Harness `0.2.0-rc.2`，并内置 `dsh-better-sidebar@0.28.0` 的侧边对话实现。本版修两处交互。其一，侧边对话输入框左侧的「+」不再出现：侧边会话是独立的子会话，宿主没有对应的斜杠命令控制器，这个按钮会一直处于禁用态、点了毫无反应，现在直接隐藏，侧边输入框只保留文字、引用和模型选择。其二，主对话或侧边对话正在生成时点击「编辑消息」，会先暂停该会话进行中的回合，再把原消息回填到对应的输入框并聚焦——主对话回到主输入框，侧边消息回到它自己那一栏的输入框，不再出现“只把文字复制进输入框、思考继续跑”的情况。桌面版已实测：主对话生成中点编辑会立即停止并回填，侧边对话生成中点编辑会立即停止该侧边回合并回填，侧边输入框的「+」已隐藏而主输入框的「+」仍然可用。升级 DSH 或 Harness 主版本后，请重新验证原生 Slots、侧边对话 API 和状态接口。
+当前里程碑：**`v0.3.9`**，适配上表中的 DSH Desktop `0.11.0` / `0.12.0` 与 Harness `0.2.0-rc.2`，并内置 `dsh-better-sidebar@0.28.0` 的侧边对话实现。本版修两处交互。其一，侧边对话输入框左侧的「+」不再出现：侧边会话是独立的子会话，宿主没有对应的斜杠命令控制器，这个按钮会一直处于禁用态、点了毫无反应，现在直接隐藏，输入框下方宿主自带的上下文占用指示（那枚「21%」小圆环）也一并隐藏，侧边输入框只保留文字、引用和模型选择。其二，主对话或侧边对话正在生成时点击「编辑消息」，会先暂停该会话进行中的回合，再把原消息回填到对应的输入框并聚焦——主对话回到主输入框，侧边消息回到它自己那一栏的输入框，不再出现“只把文字复制进输入框、思考继续跑”的情况。桌面版已实测：主对话生成中点编辑会立即停止并回填，侧边对话生成中点编辑会立即停止该侧边回合并回填，侧边输入框的「+」已隐藏而主输入框的「+」仍然可用。升级 DSH 或 Harness 主版本后，请重新验证原生 Slots、侧边对话 API 和状态接口。
 
 ## 许可证
 

@@ -53,7 +53,7 @@ DSH Desktop의 대화 인터랙션을 ChatGPT와 비슷하게 만들어 주는 �
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.8"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.9"
 ```
 
 `dsh`가 `PATH`에 없다면 DSH Desktop에 포함된 CLI를 사용하세요. 실행되는 것은 동일한 `dsh plugin` 설치 명령입니다.
@@ -62,7 +62,7 @@ dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://gi
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.8"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.9"
 ```
 
 명시적인 HTTPS Git URL을 사용하므로 pnpm이 GitHub 단축 표기를 SSH로 해석하지 않습니다. 프록시가 필요한 환경에서는 실행 전에 `HTTP_PROXY`, `HTTPS_PROXY` 또는 `ALL_PROXY`를 설정하세요. 최초 설치이거나 플러그인이 실행 중이 아니면 설치 후 DSH Desktop을 완전히 종료했다가 다시 시작하고, 실행 중인 플러그인을 업그레이드할 때는 DSH의 새로 고침 안내를 따르세요.
@@ -95,7 +95,7 @@ npm test
 
 ## 릴리스
 
-현재 마일스톤은 **`v0.3.8`**이며 DSH Desktop `0.11.0` / `0.12.0`, Harness `0.2.0-rc.2`, 내장 `dsh-better-sidebar@0.28.0` 사이드 대화에서 검증되었습니다. 이번 버전은 두 가지 동작을 수정했습니다. 첫째, 사이드 대화 입력란의 "+" 버튼을 표시하지 않습니다. 사이드 대화는 독립된 자식 세션이라 호스트에 슬래시 명령 컨트롤러가 없어 버튼이 항상 비활성 상태였고 눌러도 아무 반응이 없었습니다. 입력란에는 텍스트, 인용, 모델 선택만 남깁니다. 둘째, 메인 대화나 사이드 대화가 생성 중일 때 "메시지 편집"을 누르면 먼저 해당 대화의 진행 중인 턴을 중지하고 원문을 해당 입력란에 되돌려 포커스합니다. 메인은 메인 입력란으로, 사이드 메시지는 그 패널 자신의 입력란으로 돌아가므로 텍스트만 복사되고 생성이 계속되는 일이 없습니다. 데스크톱 버전에서 실제 검증했습니다. DSH 또는 Harness의 메이저 버전을 올린 뒤에는 기본 Slot, 사이드 대화 API와 상태 인터페이스를 다시 확인하세요.
+현재 마일스톤은 **`v0.3.9`**이며 DSH Desktop `0.11.0` / `0.12.0`, Harness `0.2.0-rc.2`, 내장 `dsh-better-sidebar@0.28.0` 사이드 대화에서 검증되었습니다. 이번 버전은 두 가지 동작을 수정했습니다. 첫째, 사이드 대화 입력란의 "+" 버튼을 표시하지 않습니다. 사이드 대화는 독립된 자식 세션이라 호스트에 슬래시 명령 컨트롤러가 없어 버튼이 항상 비활성 상태였고 눌러도 아무 반응이 없었습니다. 입력란에는 텍스트, 인용, 모델 선택만 남기고, 카드 아래에 호스트가 표시하는 컨텍스트 사용량("21%" 링)도 숨깁니다. 둘째, 메인 대화나 사이드 대화가 생성 중일 때 "메시지 편집"을 누르면 먼저 해당 대화의 진행 중인 턴을 중지하고 원문을 해당 입력란에 되돌려 포커스합니다. 메인은 메인 입력란으로, 사이드 메시지는 그 패널 자신의 입력란으로 돌아가므로 텍스트만 복사되고 생성이 계속되는 일이 없습니다. 데스크톱 버전에서 실제 검증했습니다. DSH 또는 Harness의 메이저 버전을 올린 뒤에는 기본 Slot, 사이드 대화 API와 상태 인터페이스를 다시 확인하세요.
 
 ## 라이선스
 

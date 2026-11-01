@@ -53,7 +53,7 @@ DSH Desktop の会話操作を ChatGPT に近づけるプラグインです。
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.8"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.9"
 ```
 
 `dsh` が `PATH` にない場合は、DSH Desktop に付属する CLI を使います。実行されるのは同じ `dsh plugin` インストールコマンドです。
@@ -62,7 +62,7 @@ dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://gi
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.8"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.9"
 ```
 
 明示的な HTTPS Git URL を使うため、pnpm が GitHub の短縮記法を SSH として解釈しません。プロキシが必要な環境では、実行前に `HTTP_PROXY`、`HTTPS_PROXY`、または `ALL_PROXY` を設定してください。初回インストール、またはプラグインが live でない状態での更新後は DSH Desktop を完全に再起動し、live 更新では DSH の更新案内に従ってページを再読み込みします。
@@ -95,7 +95,7 @@ npm test
 
 ## リリース
 
-現在のマイルストーンは **`v0.3.8`** です。DSH Desktop `0.11.0` / `0.12.0` と Harness `0.2.0-rc.2`、内蔵した `dsh-better-sidebar@0.28.0` のサイドチャットで検証しています。本版は二つの操作を修正しました。第一に、サイドチャット入力欄の「+」を表示しないようにしました。サイド会話は独立した子セッションで、ホストにスラッシュコマンドのコントローラがないためボタンは常に無効になり、押しても何も起きませんでした。入力欄にはテキスト・引用・モデル選択のみを残します。第二に、メイン会話やサイド会話の生成中に「メッセージを編集」を押すと、まずその会話の進行中ターンを停止し、元のテキストを対応する入力欄に戻してフォーカスします。メインはメインの入力欄へ、サイドのメッセージはそのパネル自身の入力欄へ戻るため、テキストをコピーしたまま生成が続くことはありません。デスクトップ版で実機確認済みです。DSH または Harness のメジャーバージョンを更新した場合は、標準 Slot、サイドチャット API、状態インターフェースを再確認してください。
+現在のマイルストーンは **`v0.3.9`** です。DSH Desktop `0.11.0` / `0.12.0` と Harness `0.2.0-rc.2`、内蔵した `dsh-better-sidebar@0.28.0` のサイドチャットで検証しています。本版は二つの操作を修正しました。第一に、サイドチャット入力欄の「+」を表示しないようにしました。サイド会話は独立した子セッションで、ホストにスラッシュコマンドのコントローラがないためボタンは常に無効になり、押しても何も起きませんでした。入力欄にはテキスト・引用・モデル選択のみを残し、カード下に宿主が表示するコンテキスト使用率（「21%」のリング）も非表示にします。第二に、メイン会話やサイド会話の生成中に「メッセージを編集」を押すと、まずその会話の進行中ターンを停止し、元のテキストを対応する入力欄に戻してフォーカスします。メインはメインの入力欄へ、サイドのメッセージはそのパネル自身の入力欄へ戻るため、テキストをコピーしたまま生成が続くことはありません。デスクトップ版で実機確認済みです。DSH または Harness のメジャーバージョンを更新した場合は、標準 Slot、サイドチャット API、状態インターフェースを再確認してください。
 
 ## ライセンス
 
