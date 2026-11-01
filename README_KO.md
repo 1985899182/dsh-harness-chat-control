@@ -53,7 +53,7 @@ DSH Desktop의 대화 인터랙션을 ChatGPT와 비슷하게 만들어 주는 �
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.5"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.6"
 ```
 
 `dsh`가 `PATH`에 없다면 DSH Desktop에 포함된 CLI를 사용하세요. 실행되는 것은 동일한 `dsh plugin` 설치 명령입니다.
@@ -62,7 +62,7 @@ dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://gi
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.5"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.6"
 ```
 
 명시적인 HTTPS Git URL을 사용하므로 pnpm이 GitHub 단축 표기를 SSH로 해석하지 않습니다. 프록시가 필요한 환경에서는 실행 전에 `HTTP_PROXY`, `HTTPS_PROXY` 또는 `ALL_PROXY`를 설정하세요. 최초 설치이거나 플러그인이 실행 중이 아니면 설치 후 DSH Desktop을 완전히 종료했다가 다시 시작하고, 실행 중인 플러그인을 업그레이드할 때는 DSH의 새로 고침 안내를 따르세요.
@@ -95,7 +95,7 @@ npm test
 
 ## 릴리스
 
-현재 마일스톤은 **`v0.3.5`**이며 DSH Desktop `0.11.0` / `0.12.0`, Harness `0.2.0-rc.2`, 내장 `dsh-better-sidebar@0.28.0` 사이드 대화에서 검증되었습니다. 이번 버전은 오른쪽 사이드바 탭의 마우스 오른쪽 메뉴에 **다른 탭 닫기**, **오른쪽 탭 닫기**, **왼쪽 탭 닫기**를 추가합니다. 항목은 호스트의 `sidebar.right.tab.menu.item` 슬롯으로 등록되고, 닫기는 호스트의 `closeIn`을 사용하며, 좌우 순서는 실제 탭 바를 따르고 닫을 대상이 없으면 자동으로 비활성화됩니다. v0.3.3의 다중 탭 수정도 유지합니다. 플러그인은 설치 시점과 매 열기 직전에 `sidechat` 탭 종류를 호스트 고유의 다중 인스턴스 모드(내장 터미널·브라우저가 쓰는 동일한 `multiple` 스위치)로 전환하므로, 인용할 때마다 독립된 사이드 대화 탭이 열립니다. DSH Desktop `0.12.0`(Harness `0.2.0-rc.2`)에서 연속 3회 사이드 대화 인용이 세 개의 독립 탭이 되고 각 탭이 자신의 인용 주석을 유지하는 것, 그리고 세 가지 일괄 닫기 항목이 같은 창에서 동작하는 것을 확인했습니다. DSH 또는 Harness의 메이저 버전을 올린 뒤에는 기본 Slot, 사이드 대화 API와 상태 인터페이스를 다시 확인하세요.
+현재 마일스톤은 **`v0.3.6`**이며 DSH Desktop `0.11.0` / `0.12.0`, Harness `0.2.0-rc.2`, 내장 `dsh-better-sidebar@0.28.0` 사이드 대화에서 검증되었습니다. 이번 버전은 두 가지에 집중합니다. 첫째, 사이드 대화 입력란에서 이미지 진입점을 제거하고 텍스트와 인용 스니펫만 받습니다(호스트 측 이미지 수용 경로도 삭제). 둘째, 메인 대화가 생성 중일 때 사이드에서 질문하면 메인 질문으로 덮어써지던 문제를 수정했습니다. 사이드 대화는 부모의 완료된 턴만 상속하고, 진행 중인 턴(메인 질문과 중간까지의 답변)은 경계 주입 안의 "참고용" 텍스트로만 전달되며 사이드 대화 자신의 사용자 메시지로 저장되지 않습니다. 따라서 메인 대화와 각 사이드 대화는 서로 독립적으로 동작합니다. `npm test`에는 이 시나리오의 회귀 케이스를 추가해 사이드 seed에 진행 중인 질문과 중간 답변이 없고, 질문은 경계 주입에만 나타나며, 사이드 대화의 최신 사용자 메시지가 사이드 질문임을 검증합니다. 이미지 경로와 폐기된 스레드 등록표에서 남은 미사용 코드도 정리했습니다. DSH 또는 Harness의 메이저 버전을 올린 뒤에는 기본 Slot, 사이드 대화 API와 상태 인터페이스를 다시 확인하세요.
 
 ## 라이선스
 

@@ -1,4 +1,4 @@
-﻿# dsh-harness-chat-control
+# dsh-harness-chat-control
 
 [English](README_EN.md) · [日本語](README_JA.md) · [한국어](README_KO.md)
 
@@ -54,7 +54,7 @@
 
 ```powershell
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.5"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.6"
 ```
 
 如果 `dsh` 不在 PATH，使用 DSH Desktop 自带的 CLI；底层仍是同一条 `dsh plugin` 安装命令：
@@ -63,7 +63,7 @@ dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://gi
 $desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
 $desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.5"
+& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.6"
 ```
 
 命令使用显式 HTTPS Git 地址，避免 pnpm 将 GitHub 简写解析成 SSH。若本机通过代理联网，请在执行前设置 `HTTP_PROXY`、`HTTPS_PROXY` 或 `ALL_PROXY`。首次安装或当前插件尚未运行时，安装完成后请完全退出并重新打开 DSH Desktop；已运行插件的升级按 DSH 提示刷新页面即可。
@@ -96,7 +96,7 @@ npm test
 
 ## 版本
 
-当前里程碑：**`v0.3.5`**，适配上表中的 DSH Desktop `0.11.0` / `0.12.0` 与 Harness `0.2.0-rc.2`，并内置 `dsh-better-sidebar@0.28.0` 的侧边对话实现。本版在右侧栏标签的右键菜单中增加“关闭其他标签 / 关闭右侧标签 / 关闭左侧标签”：菜单项通过宿主 `sidebar.right.tab.menu.item` 插槽注册，关闭统一走宿主的 `closeIn`，左右顺序以实际标签栏为准，没有可关闭目标时对应项自动置灰。同时保留 v0.3.3 的侧边对话多标签修复：插件在安装时和每次打开前把 `sidechat` 标签类型切换为宿主原生的多实例模式（与内置终端、浏览器相同的 `multiple` 开关），每次引用都会创建独立的侧边对话标签，引用多个名词时可同时并列多个对话。已在 DSH Desktop `0.12.0`（内置 Harness `0.2.0-rc.2`）实测：连续三次在主对话选中文本并点击“在侧边聊天中提问”，侧边栏依次出现三个各自的侧边对话标签，每个标签保留自己的引用注释且互不覆盖；三个批量关闭项在同一窗口验证通过。升级 DSH 或 Harness 主版本后，请重新验证原生 Slots、侧边对话 API 和状态接口。
+当前里程碑：**`v0.3.6`**，适配上表中的 DSH Desktop `0.11.0` / `0.12.0` 与 Harness `0.2.0-rc.2`，并内置 `dsh-better-sidebar@0.28.0` 的侧边对话实现。本版聚焦两件事：其一，侧边对话移除图片入口，输入框只接受文字与引用片段，宿主侧同步删掉图片准入链路；其二，修复主对话正在生成时侧边提问被主对话问题覆盖的问题——侧边会话只继承父会话已完成的轮次，仍在进行的那一轮（主对话的问题与已流出的半截回答）改为随边界注入下发的“仅供参考”文本，不再作为侧边会话自己的用户消息落盘，因此主对话与每个侧边对话各自独立运行、互不覆盖。`npm test` 新增了该场景的回归用例：断言侧边 seed 不含进行中的问题与半截回答、问题只出现在边界注入里、侧边会话自己最新的用户消息就是侧边提问。同时清理了随图片链路和旧线程登记表遗留的无用代码。升级 DSH 或 Harness 主版本后，请重新验证原生 Slots、侧边对话 API 和状态接口。
 
 ## 许可证
 

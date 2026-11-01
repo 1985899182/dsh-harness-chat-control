@@ -31,7 +31,7 @@ for (const relative of required) {
 
 const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 if (manifest.name !== 'dsh-harness-chat-control') throw new Error('Unexpected package name')
-if (manifest.version !== '0.3.5') throw new Error(`Unexpected plugin version: ${manifest.version}`)
+if (manifest.version !== '0.3.6') throw new Error(`Unexpected plugin version: ${manifest.version}`)
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') throw new Error('Missing DSH bundle patch declaration')
 if (manifest.dsh?.client?.platform !== 'web') throw new Error('Missing DSH Web client declaration')
 if (manifest.exports?.['./client']?.default !== './lib/client.js') throw new Error('Missing client export')
@@ -84,7 +84,7 @@ const generationInstaller = readFileSync(resolve(root, 'scripts', 'install-gener
 if (!installer.includes("$Repository = '1985899182/dsh-harness-chat-control'") || !installer.includes('$packageSpec = "git+https://github.com/$Repository.git#$Ref"')) {
   throw new Error('Installer must use the explicit HTTPS GitHub package spec')
 }
-if (!installer.includes("[string]$Ref = 'v0.3.5'")) {
+if (!installer.includes("[string]$Ref = 'v0.3.6'")) {
   throw new Error('Installer default ref must point at the published stable tag')
 }
 if (!generationInstaller.includes("ref: DEFAULT_REF") || !generationInstaller.includes('git+https://github.com/${repository}.git#${ref}')) {
@@ -151,7 +151,7 @@ for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.28.0', '侧边原生�
 }
 for (const relative of ['README_EN.md', 'README_JA.md', 'README_KO.md']) {
   const translated = readFileSync(resolve(root, relative), 'utf8')
-  for (const phrase of ['dsh plugin --profile web add --save-exact --allow-build=node-pty', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.3.5']) {
+  for (const phrase of ['dsh plugin --profile web add --save-exact --allow-build=node-pty', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.3.6']) {
     if (!translated.includes(phrase)) throw new Error(`${relative} is missing translated install/example content: ${phrase}`)
   }
 }
@@ -376,9 +376,6 @@ const coldAgent = { session: coldSession, status: 'idle' }
 const childAgents = new Map()
 const hostAgents = {
   get: (sessionId) => sessionId === 'host-session' ? hostAgent : childAgents.get(sessionId),
-  async serializeImageAdmission(_agent, operation) {
-    return operation()
-  },
   async create(options) {
     const childSession = {
       id: options.sessionId,
@@ -429,23 +426,8 @@ const hostContext = {
     }
     if (name === 'webRuntime') return { trustedHosts: [] }
     if (name === 'agents') return hostAgents
-    if (name === 'attachments') {
-      return {
-        async saveImages(images) {
-          return images.map((image, index) => ({
-            attachmentId: `att-${index}`,
-            mediaType: image.mediaType,
-            bytes: image.data.byteLength,
-            width: 1,
-            height: 1,
-            ...(image.name === undefined ? {} : { name: image.name })
-          }))
-        }
-      }
-    }
     if (name === 'llm') return {
-      async resolveCallConfig(selection) { return { ...selection } },
-      async resolveModelInfo() { return { inputModalities: ['text', 'image'] } }
+      async resolveCallConfig(selection) { return { ...selection } }
     }
     if (name === 'sessionController') return {
       resolveAgent: async (sessionId) => sessionId === 'cold-session' ? { agent: coldAgent } : { error: { code: 'session-not-found' } },
@@ -455,9 +437,6 @@ const hostContext = {
         },
         selectForNextRequest(agent, selection) {
           agent.selected = selection
-        },
-        async serializeImageAdmission(_agent, operation) {
-          return operation()
         }
       }
     }
@@ -619,27 +598,61 @@ if (!childEvents.some((event) => event.type === 'user/message' && event.data?.so
   && event.data?.content?.[0]?.text === '请解释这段引用')) {
   throw new Error('Owned sidechat did not admit the user follow-up')
 }
-const imagePromptResponse = hostResponse()
-await sidechatPromptHandler(hostRequest({
-  childId,
-  text: '请识别这张图',
-  images: [{ mediaType: 'image/png', data: 'aA==', name: 'sample.png' }]
-}), imagePromptResponse)
-if (imagePromptResponse.status !== 200 || imagePromptResponse.body?.ok !== true) {
-  throw new Error(`Owned sidechat image prompt failed: ${JSON.stringify(imagePromptResponse)}`)
-}
-const imageMessage = childAgents.get(childId).session.events
-  .map((event) => event.data)
-  .find((message) => message?.source?.kind === 'user'
-    && message?.content?.some((block) => block?.type === 'image'))
-if (imageMessage?.content?.[0]?.type !== 'image'
-  || imageMessage.content[0].attachment?.attachmentId !== 'att-0') {
-  throw new Error(`Sidechat image was not admitted as a durable native image block: ${JSON.stringify(imageMessage)}`)
-}
 const sidechatInfoResponse = hostResponse()
 await sidechatInfoHandler(hostRequest({ childId }), sidechatInfoResponse)
 if (sidechatInfoResponse.status !== 200 || sidechatInfoResponse.body?.value?.provider !== 'deepseek') {
   throw new Error(`Owned sidechat info route lost the parent model identity: ${JSON.stringify(sidechatInfoResponse)}`)
+}
+// A parent that is still generating must hand over only its COMPLETED turns:
+// the open turn (the main question plus the half-streamed answer) may never be
+// copied into the side log as one of the side thread's own user messages, or
+// the side panel would show the main conversation's question above the side
+// question.  It travels as reference text inside the boundary injection only.
+const pushHostEvent = (type, data) => hostSession.events.push({
+  seq: hostSession.events.length,
+  type,
+  time: Date.now(),
+  data
+})
+pushHostEvent('turn/start', { turn: 2 })
+pushHostEvent('user/message', { source: { kind: 'user' }, content: [{ type: 'text', text: '主对话正在处理的问题' }] })
+pushHostEvent('assistant/chunk', { chunk: { type: 'text-delta', text: '主对话已经流出的半截回答' } })
+const runningStartResponse = hostResponse()
+await sidechatStartHandler(hostRequest({ sessionId: 'host-session', question: '' }), runningStartResponse)
+if (runningStartResponse.status !== 200 || runningStartResponse.body?.ok !== true) {
+  throw new Error(`Sidechat start against a running parent failed: ${JSON.stringify(runningStartResponse.body)}`)
+}
+const runningChildId = runningStartResponse.body.value.childId
+const runningChild = childAgents.get(runningChildId)
+const inheritedTexts = runningChild.session.events
+  .filter((event) => event.type === 'user/message' || event.type === 'assistant/message')
+  .map((event) => event.data?.content?.[0]?.text)
+if (inheritedTexts.includes('主对话正在处理的问题')) {
+  throw new Error(`The parent's open turn leaked into the side seed: ${JSON.stringify(inheritedTexts)}`)
+}
+if (runningChild.session.events.some((event) => event.type === 'turn/start' || event.type === 'assistant/chunk')) {
+  throw new Error('The parent open turn was inherited as log events')
+}
+const runningPromptResponse = hostResponse()
+await sidechatPromptHandler(hostRequest({ childId: runningChildId, text: '侧边提问' }), runningPromptResponse)
+if (runningPromptResponse.status !== 200 || runningPromptResponse.body?.ok !== true) {
+  throw new Error(`Sidechat prompt against a running parent failed: ${JSON.stringify(runningPromptResponse.body)}`)
+}
+const runningBoundaryText = runningChild.session.events
+  .map((event) => event.data)
+  .filter((message) => message?.source?.kind === SIDECHAT_INJECTION_KIND)
+  .map((message) => message?.content?.[0]?.text ?? '')
+  .join('\n')
+for (const phrase of ['主对话正在处理的问题', '主对话已经流出的半截回答']) {
+  if (!runningBoundaryText.includes(phrase)) {
+    throw new Error(`The parent open turn was not carried as reference context: ${phrase}`)
+  }
+}
+const runningUserTexts = runningChild.session.events
+  .filter((event) => event.type === 'user/message' && event.data?.source?.kind === 'user')
+  .map((event) => String(event.data?.content?.[0]?.text ?? ''))
+if (runningUserTexts.at(-1) !== '侧边提问') {
+  throw new Error(`The side thread must own the side question as its latest user message: ${JSON.stringify(runningUserTexts)}`)
 }
 for (const cleanup of hostEffects) cleanup()
 
