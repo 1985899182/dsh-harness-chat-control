@@ -146,12 +146,12 @@ if (!readFileSync(resolve(root, 'README.md'), 'utf8').includes('dsh plugin --pro
   throw new Error('README must document the standard dsh plugin installer')
 }
 const readme = readFileSync(resolve(root, 'README.md'), 'utf8')
-for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.28.0', '侧边原生对话栏', '铅笔按钮', '卡死', 'README_EN.md', 'README_JA.md', 'README_KO.md']) {
+for (const phrase of ['1 条注释', 'dsh-better-sidebar@0.28.0', 'README_EN.md', 'README_JA.md', 'README_KO.md', 'docs/screenshots/selection-toolbar.png', 'docs/screenshots/side-chat.png', 'docs/screenshots/edit-stop-resend.png', 'docs/screenshots/tab-batch-close.png']) {
   if (!readme.includes(phrase)) throw new Error(`README is missing the native reference/sidechat note: ${phrase}`)
 }
 for (const relative of ['README_EN.md', 'README_JA.md', 'README_KO.md']) {
   const translated = readFileSync(resolve(root, relative), 'utf8')
-  for (const phrase of ['dsh plugin --profile web add --save-exact --allow-build=node-pty', 'main-conversation-quote.svg', 'sidebar-conversation-quote.svg', 'v0.3.9']) {
+  for (const phrase of ['dsh plugin --profile web add --save-exact --allow-build=node-pty', 'selection-toolbar.png', 'side-chat.png', 'edit-stop-resend.png', 'tab-batch-close.png', 'v0.3.9']) {
     if (!translated.includes(phrase)) throw new Error(`${relative} is missing translated install/example content: ${phrase}`)
   }
 }

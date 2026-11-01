@@ -1,101 +1,81 @@
 # dsh-harness-chat-control
 
-[简体中文](README.md) · [English](README_EN.md) · [한국어](README_KO.md)
+DSH Desktop に「引用して追加質問」を加えます。回答の任意の文を選択して引用し、メイン会話または独立したサイド会話へ持ち込めます。生成の途中でも一時停止して質問を書き直せます。
 
-DSH Desktop の会話操作を ChatGPT に近づけるプラグインです。
+[中文](README.md) · [English](README_EN.md) · [한국어](README_KO.md)
 
-> **目的：ChatGPT の 2 つの引用会話フローを再現すること。**
->
-> 1. **メイン会話で引用**：回答を引用し、同じ会話でそのまま質問を続けます。
-> 2. **サイドバー会話で引用**：引用を Better Sidebar に渡し、メイン会話を変更せず独立したサイドバーセッションで質問します。
+## スクリーンショット
 
-## 画面例
+**選択して引用** — 回答内の一節を選択すると、ツールバーが「添加到对话 / 更多详情 / 在侧边聊天中提问」を表示します。
 
-### メイン会話での引用
+![選択ツールバー](docs/screenshots/selection-toolbar.png)
 
-回答の文字を選択するか、操作バーの **引用** をクリックします。引用は入力欄の注釈チップとして保持され、質問を編集してから送信できます。
+**サイド会話** — 引用は右側の独立したスレッドへ渡り、メイン会話は止まりません。引用は入力欄に注釈チップとして残ります。
 
-![メイン会話の引用例](docs/screenshots/main-conversation-quote.svg)
+![サイド会話](docs/screenshots/side-chat.png)
 
-### サイドバー会話での引用
+**生成中に書き直す** — 生成中に鉛筆を押すと、現在のターンを停止して元の質問を入力欄へ戻します。編集してそのまま再送できます。
 
-**サイドバーで質問**、または文字選択ツールバーの **サイドバーチャットで質問** をクリックします。Better Sidebar の標準入力欄とモデル選択をそのまま使用します。引用チップ以外の文字はすべてユーザーが入力し、**送信** を押すまで回答は開始されません。
+![生成中に書き直す](docs/screenshots/edit-stop-resend.png)
 
-![サイドバー会話の引用例](docs/screenshots/sidebar-conversation-quote.svg)
+**タブの一括クローズ** — 右パネルのタブを右クリックし、他のタブ・左側・右側をまとめて閉じられます。
 
-## 機能
+![タブの一括クローズ](docs/screenshots/tab-batch-close.png)
 
-- **メイン会話の引用**：回答全体または選択した一部を引用できます。`>` や `---` などの Markdown 記号が本文に混入しません。
-- **標準の注釈チップ**：引用は入力欄の `1 件の注釈` チップとして表示され、送信前に質問を編集したりチップを削除したりできます。
-- **内蔵サイドバー**：`dsh-better-sidebar@0.28.0` の `SideChatView`、転記マッピング、スタイルを直接内蔵・固定しています。Better Sidebar が未導入でも動作し、別バージョンが存在しても本プロジェクトのサイドチャットが有効です。
-- **サイドバー引用**：Better Sidebar のネイティブな会話レイアウトと DSH のセッション／モデル機能をそのまま利用します。メイン会話とサイドバー会話は独立しています。
-- **モデル選択**：標準のモデル選択は現在のサイドバーセッションだけに適用されます。
-- **編集して再送信**：ユーザーメッセージ横の鉛筆ボタンを押すと元の文章が標準入力欄に入り、送信後は同じ会話の元の位置で表示中の分岐を置き換えます。
-- **生成の停止**：DSH の標準の停止・送信状態を利用し、イベントを二重送信しません。
+## 特長
 
-引用チップ、入口、セッションのルーティングに加え、サイドバーのレイアウト、転記、子セッションのライフサイクルは固定した Better Sidebar 0.28.0 のソースを使うため、外部プラグインのバージョン競合を避けられます。
+- **ネイティブな注釈チップ**：引用は本文に入らず、入力欄に `1 条注释` のチップとして表示されます。質問を足してから送信でき、不要なら外せます。`>` や `---` などの Markdown 記号が本文へ漏れることもありません。
+- **サイド会話は完全に独立**：サイド会話は独自の子セッションで、モデル選択・停止・送信の状態も別です。メインの回答が生成中でもサイドの質問を上書きしません。
+- **生成中でも修正できる**：「编辑消息」を押すとまず現在のターンを中止し、そのうえで元の文を入力欄へ戻してフォーカスします。「文字だけ入って思考は続く」状態にはなりません。
+- **サイドバー実装を内蔵**：`dsh-better-sidebar@0.28.0` のサイド会話実装を内蔵して固定しているため、別途インストールは不要で、他のバージョンとも衝突しません。
 
-## 対応バージョン
+## ホスト要件
 
-| コンポーネント | バージョン |
+| コンポーネント | 要件 |
 | --- | --- |
 | DSH Desktop（Windows） | `0.12.1` |
-| DeepSeek Harness / `@deepseek-ai/dsh` | `0.2.1-rc.2` |
-| `dsh-better-sidebar` | **`0.28.0`** |
-| Node.js | `>=20` |
-| pnpm | `10.x` または `11.x` |
+| Harness ランタイム | `0.2.1-rc.2` |
+| 内蔵 `dsh-better-sidebar` | `0.28.0`（プラグインに同梱） |
+| Node.js | `>= 20` |
+| pnpm | `10.x` / `11.x` |
 
-`dsh-better-sidebar@0.28.0` は Harness `0.2.1-rc.2` 向けです。DSH Desktop `0.12.1`（Harness `0.2.1-rc.2` 同梱）では Sidebar を `0.28.0` に固定してください。Harness `0.2.1-rc.2` は `webRuntime` サービスを廃止したため、本プラグインは `connection.requestRejection()` でリクエストを許可します。
+プラグインは `peerDependencies` で Harness `0.2.1-rc.2` を固定しています。ホストはプラグインを読み込む前に宣言されたバージョン要件を照合し、不一致なら未達項目を挙げて拒否します。Harness のメジャーを上げる前にプラグインを更新してください。
 
-## インストール
+## インストール（エージェントに渡す）
 
-すべてのインストールで DSH 公式のプラグインコマンドを使用します。DSH Desktop を完全に終了してから、Windows PowerShell で実行してください。
+この節を DSH 内のエージェントにそのまま渡してください。コマンド実行と失敗時の対処まで行います。設定ファイルの手編集は不要です。
 
 ```powershell
-$env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
+# 1. DSH Desktop を完全に終了する
+# 2. 公式のプラグインコマンドで web プロファイルへ導入する
 dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.9"
+# 3. DSH Desktop を起動し直す
 ```
 
-`dsh` が `PATH` にない場合は、DSH Desktop に付属する CLI を使います。実行されるのは同じ `dsh plugin` インストールコマンドです。
+`dsh` が PATH に無い場合は、デスクトップ版に同梱の CLI を使います（同じコマンドです）。
 
 ```powershell
-$desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
-$desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.9"
+$env:PATH = "$env:DSH_HOME\.desktop-bin;$env:PATH"
+$cli = '<DSH Desktop のインストール先>\resources\app.asar\node_modules\@deepseek-ai\dsh\lib\bin.js'
+& "$env:DSH_HOME\.desktop-bin\node.cmd" $cli plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.9"
 ```
 
-明示的な HTTPS Git URL を使うため、pnpm が GitHub の短縮記法を SSH として解釈しません。プロキシが必要な環境では、実行前に `HTTP_PROXY`、`HTTPS_PROXY`、または `ALL_PROXY` を設定してください。初回インストール、またはプラグインが live でない状態での更新後は DSH Desktop を完全に再起動し、live 更新では DSH の更新案内に従ってページを再読み込みします。
+失敗したときは症状ごとに方針を変えます。
 
-プロファイルがすでに Sidebar `0.24.x` の場合は、同じ `dsh plugin` コマンドで互換バージョンを先に固定します。
+| 症状 | 対処の方向 |
+| --- | --- |
+| `dsh` が見つからない | 上記の同梱 CLI 形式を使い、`.desktop-bin` を PATH に入れる |
+| `Ignored build scripts` / `allowBuilds` の警告 | `%APPDATA%\dsh-desktop\harness\profiles\web\pnpm-workspace.yaml` の `allowBuilds` に表示されたパッケージ名を追加するか、`--allow-build=<パッケージ>` を付けて再実行する |
+| `incompatible-version` | ランタイムがプラグインの宣言と一致していません。`0.2.1-rc.2` に戻すか、プラグインを更新する |
+| 停止する・タイムアウト・401 | `HTTP_PROXY` / `HTTPS_PROXY` を設定して再実行し、Git 指定は `https://` の明示 URL のままにする |
+| 画面が変わらない | DSH Desktop を完全に終了して開き直す。稼働中のプラグイン更新なら案内どおり再読み込みする |
 
-```powershell
-$desktopNode = 'D:\DSH\DSH Desktop\resources\app\node_modules\node\bin\node.exe'
-$desktopDsh = 'D:\DSH\DSH Desktop\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js'
-$env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
-& $desktopNode $desktopDsh plugin --profile web add --save-exact --allow-build=node-pty dsh-better-sidebar@0.28.0
-```
+## 変更履歴
 
-その後、上記の標準インストールコマンドを実行します。
-
-## 使い方
-
-1. **メイン会話**：回答の操作バーで **引用** を押すか、文字を選択して **会話に追加** を選び、質問を入力して送信します。
-2. **サイドバー会話**：**サイドバーで質問**、または選択ツールバーの **サイドバーチャットで質問** を押し、モデルを選んで質問を入力し、送信します。
-3. **編集して再送信**：ユーザーメッセージ横の鉛筆ボタンを押し、標準入力欄で文章を編集して送信します。新しい回答は元の位置に表示されます。
-4. **タブ管理**：右サイドバーのタブを右クリックすると、**他のタブを閉じる**、**右側のタブを閉じる**、**左側のタブを閉じる** を選べます。
-
-## 開発
-
-```powershell
-npm test
-```
-
-マニフェスト、ローダー宣言、PowerShell インストーラー、JavaScript 構文を検証します。
-
-## リリース
-
-現在のマイルストーンは **`v0.3.9`** です。DSH Desktop `0.11.0` / `0.12.0` と Harness `0.2.0-rc.2`、内蔵した `dsh-better-sidebar@0.28.0` のサイドチャットで検証しています。本版は二つの操作を修正しました。第一に、サイドチャット入力欄の「+」を表示しないようにしました。サイド会話は独立した子セッションで、ホストにスラッシュコマンドのコントローラがないためボタンは常に無効になり、押しても何も起きませんでした。入力欄にはテキスト・引用・モデル選択のみを残し、カード下に宿主が表示するコンテキスト使用率（「21%」のリング）も非表示にします。第二に、メイン会話やサイド会話の生成中に「メッセージを編集」を押すと、まずその会話の進行中ターンを停止し、元のテキストを対応する入力欄に戻してフォーカスします。メインはメインの入力欄へ、サイドのメッセージはそのパネル自身の入力欄へ戻るため、テキストをコピーしたまま生成が続くことはありません。デスクトップ版で実機確認済みです。DSH または Harness のメジャーバージョンを更新した場合は、標準 Slot、サイドチャット API、状態インターフェースを再確認してください。
+- **v0.3.9**：サイド入力欄で使えない「+」とホスト標準のコンテキスト表示を非表示にしました。生成中の「编辑消息」は先にターンを停止してから入力欄へ戻します。
+- **v0.3.8**：サイド会話が独立して動作し、互いの質問を上書きしなくなりました。不要なコードを整理。
+- それ以前は [MILESTONE.md](MILESTONE.md) を参照。
 
 ## ライセンス
 
