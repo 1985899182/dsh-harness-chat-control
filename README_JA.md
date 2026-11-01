@@ -48,7 +48,7 @@ DSH Desktop に「引用して追加質問」を加えます。回答の任意�
 ```powershell
 # 1. DSH Desktop を完全に終了する
 # 2. 公式のプラグインコマンドで web プロファイルへ導入する
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.10"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.11"
 # 3. DSH Desktop を起動し直す
 ```
 
@@ -58,7 +58,7 @@ dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://gi
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
 $env:PATH = "$env:DSH_HOME\.desktop-bin;$env:PATH"
 $cli = '<DSH Desktop のインストール先>\resources\app.asar\node_modules\@deepseek-ai\dsh\lib\bin.js'
-& "$env:DSH_HOME\.desktop-bin\node.cmd" $cli plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.10"
+& "$env:DSH_HOME\.desktop-bin\node.cmd" $cli plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.11"
 ```
 
 失敗したときは症状ごとに方針を変えます。
@@ -73,6 +73,7 @@ $cli = '<DSH Desktop のインストール先>\resources\app.asar\node_modules\@
 
 ## 変更履歴
 
+- **v0.3.11**：サイド会話の引用チップが 24px の添付ボタンに押し込まれる問題を修正——削除ボタンがプレースホルダーに重なり、「×」のクリックで画像選択まで開いていました。チップは本来の幅で並び、クリックは引用の削除だけを行います。
 - **v0.3.10**：サイド会話で画像を選択・貼り付けて質問できます。ホスト互換チェックリストと接縫の自動検出（`npm test` で実行）を追加しました。
 - **v0.3.9**：サイド入力欄で使えない「+」とホスト標準のコンテキスト表示を非表示にしました。生成中の「编辑消息」は先にターンを停止してから入力欄へ戻します。
 - **v0.3.8**：サイド会話が独立して動作し、互いの質問を上書きしなくなりました。不要なコードを整理。

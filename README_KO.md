@@ -48,7 +48,7 @@ DSH Desktop에 「인용 후 이어 묻기」를 더합니다. 답변의 아무 
 ```powershell
 # 1. DSH Desktop 을 완전히 종료
 # 2. 공식 플러그인 명령으로 web 프로파일에 설치
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.10"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.11"
 # 3. DSH Desktop 다시 실행
 ```
 
@@ -58,7 +58,7 @@ dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://gi
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
 $env:PATH = "$env:DSH_HOME\.desktop-bin;$env:PATH"
 $cli = '<DSH Desktop 설치 경로>\resources\app.asar\node_modules\@deepseek-ai\dsh\lib\bin.js'
-& "$env:DSH_HOME\.desktop-bin\node.cmd" $cli plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.10"
+& "$env:DSH_HOME\.desktop-bin\node.cmd" $cli plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.11"
 ```
 
 실패하면 증상별로 방향을 바꾸세요.
@@ -73,6 +73,7 @@ $cli = '<DSH Desktop 설치 경로>\resources\app.asar\node_modules\@deepseek-ai
 
 ## 변경 기록
 
+- **v0.3.11**: 사이드 대화의 인용 칩이 24px 첨부 버튼에 눌려 삭제 버튼이 플레이스홀더를 덮고, × 클릭 시 이미지 선택까지 열리던 문제를 수정했습니다. 이제 칩은 제 너비를 차지하고 클릭은 인용 삭제만 수행합니다.
 - **v0.3.10**：사이드 대화에서 이미지를 선택하거나 붙여넣어 질문할 수 있습니다. 호스트 호환 목록과 접합부 자동 점검(`npm test`에서 실행)을 추가했습니다.
 - **v0.3.9**：사이드 입력창에서 쓸 수 없는 「+」 와 호스트 기본 컨텍스트 표시를 숨겼습니다. 생성 중 「编辑消息」는 턴을 먼저 멈춘 뒤 입력창을 채웁니다.
 - **v0.3.8**：사이드 대화가 독립적으로 동작해 서로의 질문을 덮어쓰지 않습니다. 불필요한 코드 정리.

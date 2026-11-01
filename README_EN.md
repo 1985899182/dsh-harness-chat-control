@@ -48,7 +48,7 @@ Give this section to the agent inside DSH. It runs the command and handles failu
 ```powershell
 # 1. Quit DSH Desktop completely
 # 2. Install into the web profile with the official plugin command
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.10"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.11"
 # 3. Start DSH Desktop again
 ```
 
@@ -58,7 +58,7 @@ If `dsh` is not on PATH, use the CLI bundled with the desktop app (same command 
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
 $env:PATH = "$env:DSH_HOME\.desktop-bin;$env:PATH"
 $cli = '<DSH Desktop install dir>\resources\app.asar\node_modules\@deepseek-ai\dsh\lib\bin.js'
-& "$env:DSH_HOME\.desktop-bin\node.cmd" $cli plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.10"
+& "$env:DSH_HOME\.desktop-bin\node.cmd" $cli plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.11"
 ```
 
 When something fails, change course by symptom:
@@ -73,6 +73,7 @@ When something fails, change course by symptom:
 
 ## Changelog
 
+- **v0.3.11**: fixes the side-chat reference chip being squeezed into the 24px attach button — the remove button overlapped the composer placeholder and clicking it also opened the image picker; the chip now takes its own width and the click only removes the reference.
 - **v0.3.10**: side conversations accept a picked or pasted picture; adds a host compatibility checklist and an automated seam check (runs with `npm test`).
 - **v0.3.9**: the side composer hides the unusable “+” and the host's context meter; “编辑消息” during generation now stops the turn before refilling.
 - **v0.3.8**: side conversations run independently and no longer overwrite each other's question; dead code removed.
