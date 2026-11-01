@@ -30,7 +30,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node ./scripts/validate.mjs"
+    "test": "node ./scripts/validate.mjs && node ./scripts/compat-check.mjs",
+    "compat": "node ./scripts/compat-check.mjs"
   },
   "dsh": {
     "bundle": {
