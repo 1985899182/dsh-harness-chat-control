@@ -179,13 +179,64 @@ const insertedReferences = []
 const registeredSources = []
 const editRequests = []
 const sourcePrompts = []
+// `activeHookRuntime` lets one mount keep real state and dependency tracking
+// while every other fixture keeps the simple stateless behaviour above.
+let activeHookRuntime = null
 const fakeReact = {
   Fragment: Symbol('Fragment'),
   createElement: (...args) => ({ args }),
-  useState: (initial) => [initial, () => {}],
+  useState: (initial) => (activeHookRuntime === null ? [initial, () => {}] : activeHookRuntime.useState(initial)),
   useRef: (initial) => ({ current: initial }),
-  useEffect: (effect) => { effect?.() },
+  useEffect: (effect, deps) => {
+    if (activeHookRuntime === null) effect?.()
+    else activeHookRuntime.useEffect(effect, deps)
+  },
   useSyncExternalStore: (_subscribe, getSnapshot) => getSnapshot()
+}
+
+function mountWithHooks(component, props) {
+  const slots = []
+  const runtime = {
+    cursor: 0,
+    render() {
+      const previous = activeHookRuntime
+      activeHookRuntime = runtime
+      runtime.cursor = 0
+      try {
+        return component(props)
+      } finally {
+        activeHookRuntime = previous
+      }
+    },
+    useState(initial) {
+      const index = runtime.cursor++
+      if (slots[index] === undefined) {
+        slots[index] = { value: typeof initial === 'function' ? initial() : initial }
+      }
+      const slot = slots[index]
+      return [slot.value, (next) => {
+        const value = typeof next === 'function' ? next(slot.value) : next
+        if (Object.is(value, slot.value)) return
+        slot.value = value
+        runtime.view = runtime.render()
+      }]
+    },
+    useEffect(effect, deps) {
+      const index = runtime.cursor++
+      const slot = slots[index] ?? (slots[index] = { deps: undefined, cleanup: undefined })
+      const list = Array.isArray(deps) ? deps : undefined
+      const unchanged = list !== undefined && slot.deps !== undefined
+        && slot.deps.length === list.length
+        && slot.deps.every((value, position) => Object.is(value, list[position]))
+      if (unchanged) return
+      if (typeof slot.cleanup === 'function') slot.cleanup()
+      slot.deps = list
+      const cleanup = effect()
+      slot.cleanup = typeof cleanup === 'function' ? cleanup : undefined
+    }
+  }
+  runtime.view = runtime.render()
+  return runtime
 }
 
 const browserSandbox = {
@@ -680,6 +731,7 @@ const fakeSlots = {
 }
 
 let fakeInputSnapshot = { draft: '已有草稿', draftRev: 7 }
+let fakeSerializedReference = ''
 const fakeInput = {
   state: {
     getSnapshot: () => fakeInputSnapshot
@@ -701,6 +753,9 @@ const fakeSessionContext = {
   }
 }
 const fakeInputTriggers = {
+  // Mirrors the native sink: a chip expands into its model form before the
+  // prompt is admitted, so the armed edit text must be this form too.
+  serializeReference: async () => fakeSerializedReference,
   registerSource(source) {
     registeredSources.push(source)
     return () => {}
@@ -1002,6 +1057,360 @@ const sideButtons = sideView.args[2].args.slice(2)
 sideButtons[2].args[1].onClick({})
 if (sideCalls.at(-1)?.[0] !== 'desktop-session-1' || sideCalls.at(-1)?.[1] !== '需要带入侧边聊天的片段' || sideCalls.at(-1)?.[2] !== '') {
   throw new Error('The side-chat action did not carry the selected text with an empty editable question')
+}
+
+// ---------------------------------------------------------------------------
+// DOM fixtures for the shell overlay: the side transcript has no host chat
+// anchors, and a Better Sidebar tab switch only mutates class/style.
+// ---------------------------------------------------------------------------
+function matchesCompound(element, compound) {
+  if (element === null || element === undefined || element.nodeType !== 1) return false
+  const tokens = compound.match(/^[a-zA-Z][\w-]*|\.[\w-]+|\[[^\]]+\]/g) || []
+  for (const token of tokens) {
+    if (token.startsWith('.')) {
+      if (!String(element.getAttribute('class') || '').split(/\s+/).includes(token.slice(1))) return false
+    } else if (token.startsWith('[')) {
+      const parsed = token.slice(1, -1).match(/^([\w-]+)(?:([*^$]?=)"?([^"\]]*)"?)?$/)
+      if (parsed === null) return false
+      const value = element.getAttribute(parsed[1])
+      if (value === null) return false
+      if (parsed[2] === '=' && value !== parsed[3]) return false
+      if (parsed[2] === '*=' && !value.includes(parsed[3])) return false
+    } else if (element.tagName !== token.toUpperCase()) {
+      return false
+    }
+  }
+  return true
+}
+
+function matchesSelector(element, selector) {
+  for (const alternative of selector.split(',')) {
+    const compounds = alternative.trim().split(/\s+/)
+    if (!matchesCompound(element, compounds[compounds.length - 1])) continue
+    let ancestor = element.parentElement
+    let matched = true
+    for (let index = compounds.length - 2; index >= 0; index -= 1) {
+      while (ancestor !== null && !matchesCompound(ancestor, compounds[index])) ancestor = ancestor.parentElement
+      if (ancestor === null) {
+        matched = false
+        break
+      }
+      ancestor = ancestor.parentElement
+    }
+    if (matched) return true
+  }
+  return false
+}
+
+class FakeElement {
+  constructor(tag, attributes = {}, text = '', rect = { left: 0, top: 0, width: 0, height: 0 }) {
+    this.nodeType = 1
+    this.tagName = tag.toUpperCase()
+    this.attributes = new Map(Object.entries(attributes))
+    this.children = []
+    this.parentElement = null
+    this.isConnected = true
+    this.textContent = text
+    this.computedDisplay = 'block'
+    this.rect = rect
+  }
+
+  getAttribute(name) {
+    return this.attributes.has(name) ? this.attributes.get(name) : null
+  }
+
+  setAttribute(name, value) {
+    this.attributes.set(name, String(value))
+  }
+
+  append(...nodes) {
+    for (const node of nodes) {
+      node.parentElement = this
+      this.children.push(node)
+    }
+    return this
+  }
+
+  getBoundingClientRect() {
+    const { left, top, width, height } = this.rect
+    return { left, top, width, height, right: left + width, bottom: top + height }
+  }
+
+  setRect(rect) {
+    this.rect = rect
+  }
+
+  matches(selector) {
+    return matchesSelector(this, selector)
+  }
+
+  closest(selector) {
+    let node = this
+    while (node !== null) {
+      if (matchesSelector(node, selector)) return node
+      node = node.parentElement
+    }
+    return null
+  }
+
+  querySelectorAll(selector) {
+    const found = []
+    const walk = (node) => {
+      for (const child of node.children) {
+        if (matchesSelector(child, selector)) found.push(child)
+        walk(child)
+      }
+    }
+    walk(this)
+    return found
+  }
+
+  querySelector(selector) {
+    return this.querySelectorAll(selector)[0] ?? null
+  }
+}
+
+function createFakeDocument() {
+  const listeners = new Map()
+  const document = {
+    body: new FakeElement('body'),
+    documentElement: { clientWidth: 1200 },
+    querySelectorAll: (selector) => document.body.querySelectorAll(selector),
+    querySelector: (selector) => document.body.querySelector(selector),
+    addEventListener(type, handler) {
+      const list = listeners.get(type) ?? []
+      list.push(handler)
+      listeners.set(type, list)
+    },
+    removeEventListener(type, handler) {
+      const list = listeners.get(type) ?? []
+      listeners.set(type, list.filter((entry) => entry !== handler))
+    },
+    emit(type, event) {
+      for (const handler of [...(listeners.get(type) ?? [])]) handler(event)
+    }
+  }
+  return document
+}
+
+function installFakeWindow() {
+  const frames = []
+  const observers = []
+  const win = browserSandbox.window
+  win.innerWidth = 1200
+  win.getComputedStyle = (element) => ({ display: element?.computedDisplay ?? 'block', visibility: 'visible' })
+  win.requestAnimationFrame = (callback) => {
+    frames.push(callback)
+    return frames.length
+  }
+  win.cancelAnimationFrame = () => {}
+  win.setTimeout = (callback) => {
+    frames.push(callback)
+    return frames.length
+  }
+  win.clearTimeout = () => {}
+  win.MutationObserver = class FakeMutationObserver {
+    constructor(callback) {
+      this.callback = callback
+      this.options = null
+      observers.push(this)
+    }
+
+    observe(_target, options) {
+      this.options = options
+    }
+
+    disconnect() {
+      this.disconnected = true
+    }
+
+    emit(records) {
+      this.callback(records, this)
+    }
+  }
+  return {
+    frames,
+    observers,
+    flush() {
+      while (frames.length > 0) frames.shift()()
+    }
+  }
+}
+
+function collectByClass(node, className, found = []) {
+  if (node === null || node === undefined) return found
+  if (Array.isArray(node)) {
+    for (const item of node) collectByClass(item, className, found)
+    return found
+  }
+  if (typeof node !== 'object' || !Array.isArray(node.args)) return found
+  if (node.args[1]?.className === className) found.push(node.args[1])
+  for (const child of node.args.slice(2)) collectByClass(child, className, found)
+  return found
+}
+
+const fakeWindow = installFakeWindow()
+
+// C12: a selection made in the owned sidechat transcript must quote into the
+// parent main session even though the row carries no host chat anchors.
+const selectionDom = createFakeDocument()
+const selectionSidechatView = new FakeElement('div', {
+  class: 'dshhc-sidechat-view',
+  'data-dsh-harness-sidechat': 'child-side-1',
+  'data-dsh-harness-sidechat-parent': 'parent-session-9'
+})
+const selectionNativeView = new FakeElement('div', { class: 'dshhc-sidechat-native-view' })
+const selectionRow = new FakeElement('div', { class: 'answerRow' }, '侧边对话里的引用片段', { left: 300, top: 200, width: 240, height: 40 })
+selectionSidechatView.append(selectionNativeView)
+selectionNativeView.append(selectionRow)
+selectionDom.body.append(selectionSidechatView)
+const selectionTextNode = { nodeType: 3, textContent: '侧边对话里的引用片段', parentElement: selectionRow }
+browserSandbox.window.getSelection = () => ({
+  rangeCount: 1,
+  toString: () => '侧边对话里的引用片段',
+  getRangeAt: () => ({
+    collapsed: false,
+    startContainer: selectionTextNode,
+    endContainer: selectionTextNode,
+    getBoundingClientRect: () => ({ left: 320, top: 210, width: 180, height: 20, right: 500, bottom: 230 })
+  }),
+  removeAllRanges: () => {}
+})
+const previousDocument = browserSandbox.document
+browserSandbox.document = selectionDom
+const parentReferenceCalls = []
+shellProps.selectionStore.close()
+const sideSelectionShell = shellRegistration.component({
+  ...shellProps,
+  insertReference: (...args) => parentReferenceCalls.push(args),
+  openSideChat: (...args) => sideCalls.push(args),
+  useSessions: (select) => select({ current: 'main-session-7' })
+})
+const sideSelectionChild = (sideSelectionShell?.args?.slice(2) || [])
+  .find((child) => child?.args?.[0]?.name === 'SelectionToolbar')
+if (sideSelectionChild === undefined) throw new Error('Selection toolbar is not mounted for the sidechat selection test')
+const selectionRuntime = mountWithHooks(sideSelectionChild.args[0], sideSelectionChild.args[1])
+selectionDom.emit('selectionchange', {})
+fakeWindow.flush()
+const sideSelectionPanel = shellProps.selectionStore.getSnapshot()
+if (sideSelectionPanel.sessionId !== 'parent-session-9') {
+  throw new Error(`A sidechat selection must quote into its parent session: ${JSON.stringify(sideSelectionPanel)}`)
+}
+const sideSelectionView = selectionRuntime.render()
+const sideSelectionButtons = sideSelectionView?.args?.[2]?.args?.slice(2) || []
+if (sideSelectionButtons.length !== 3) throw new Error('Sidechat selection toolbar must expose three actions')
+sideSelectionButtons[0].args[1].onClick({})
+if (parentReferenceCalls.length !== 1
+  || parentReferenceCalls[0][0] !== 'parent-session-9'
+  || parentReferenceCalls[0][1] !== '侧边对话里的引用片段') {
+  throw new Error(`Sidechat selection was not inserted into the parent session: ${JSON.stringify(parentReferenceCalls)}`)
+}
+
+// C13: switching a Better Sidebar tab only changes class/style, so the edit
+// pins must be re-read (and the previous tab's pencil must disappear).
+const overlayDom = createFakeDocument()
+const buildSidechatTab = (child, parent, key, rect) => {
+  const view = new FakeElement('div', {
+    class: 'dshhc-sidechat-view',
+    'data-dsh-harness-sidechat': child,
+    'data-dsh-harness-sidechat-parent': parent
+  })
+  const nativeView = new FakeElement('div', { class: 'dshhc-sidechat-native-view' })
+  const row = new FakeElement('div', { 'data-chat-flow-kind': 'user', 'data-chat-flow-key': key }, `消息 ${key}`, rect)
+  nativeView.append(row)
+  view.append(nativeView)
+  return { view, nativeView, row }
+}
+const tabA = buildSidechatTab('child-a', 'parent-a', 'row-a', { left: 100, top: 100, width: 200, height: 20 })
+const tabB = buildSidechatTab('child-b', 'parent-b', 'row-b', { left: 0, top: 0, width: 0, height: 0 })
+overlayDom.body.append(tabA.view, tabB.view)
+browserSandbox.document = overlayDom
+const overlayChild = shellChildren.find((child) => child?.args?.[0]?.name === 'UserEditOverlay')
+if (overlayChild === undefined) throw new Error('User edit overlay is not mounted for the tab switch test')
+const overlayRuntime = mountWithHooks(overlayChild.args[0], {
+  revisionStore: shellProps.revisionStore,
+  useSessions: (select) => select({ current: 'parent-a' }),
+  ctx: shellProps.ctx,
+  sideChatDrafts: shellProps.sideChatDrafts
+})
+fakeWindow.flush()
+const firstPins = collectByClass(overlayRuntime.view, 'dshhc-message-edit')
+if (firstPins.length !== 1 || firstPins[0].style.left !== '304px' || firstPins[0].style.top !== '100px') {
+  throw new Error(`The edit pin was not placed on the visible sidechat tab: ${JSON.stringify(firstPins)}`)
+}
+const overlayObserver = fakeWindow.observers.at(-1)
+if (overlayObserver?.options?.attributes !== true
+  || !Array.isArray(overlayObserver?.options?.attributeFilter)
+  || !overlayObserver.options.attributeFilter.includes('class')
+  || !overlayObserver.options.attributeFilter.includes('hidden')) {
+  throw new Error('The edit overlay must observe class/style changes to follow a tab switch')
+}
+tabA.row.setRect({ left: 0, top: 0, width: 0, height: 0 })
+tabA.view.setAttribute('class', 'dshhc-sidechat-view dshhc-sidechat-hidden')
+tabB.row.setRect({ left: 500, top: 300, width: 200, height: 20 })
+overlayObserver.emit([{ type: 'attributes', target: tabA.view, attributeName: 'class' }])
+fakeWindow.flush()
+const secondPins = collectByClass(overlayRuntime.view, 'dshhc-message-edit')
+if (secondPins.length !== 1 || secondPins[0].style.left !== '704px' || secondPins[0].style.top !== '300px') {
+  throw new Error(`The edit pin stayed on the previous sidechat tab: ${JSON.stringify(secondPins)}`)
+}
+
+// C14: a reference chip is expanded by the native sink before admission, so
+// the armed replacement must use that expanded text or the host appends a turn.
+browserSandbox.document = previousDocument
+const chipToken = '@[1 条注释](dsh-chat-control:ref-abc)'
+const chipDraft = `请看 ${chipToken} 这里`
+const chipOffset = chipDraft.indexOf(chipToken)
+const serializedChip = '【引用开始】\n引用的原文\n【引用结束】'
+fakeSerializedReference = serializedChip
+fakeInputSnapshot = {
+  draft: chipDraft,
+  draftRev: 11,
+  occurrences: [{ source: 'dsh-chat-control', ref: '{"id":"ref-abc"}', offset: chipOffset, length: chipToken.length }]
+}
+const expectedChipText = (`请看 ${serializedChip} 这里`).trim()
+revisionProps.revisionStore.request({
+  sessionId: 'desktop-session-1',
+  key: 'prompt',
+  text: '请把答案改短一些'
+})
+let chipNativeDraft = '请把答案改短一些'
+let chipSubmitCalls = 0
+const chipKeyboard = {
+  submit: (...args) => {
+    chipSubmitCalls += 1
+    sourcePrompts.push([{ type: 'text', text: chipNativeDraft.trim() }])
+    return args.length
+  }
+}
+const chipInputActions = {
+  setDraft: (text) => { chipNativeDraft = text },
+  submit: (...args) => chipKeyboard.submit(...args)
+}
+revisionRegistration.component({
+  ...revisionProps,
+  useChat: (select) => select(desktopChatSnapshot),
+  useInput: (select) => select(fakeInputSnapshot),
+  inputActions: chipInputActions
+})
+chipNativeDraft = expectedChipText
+chipInputActions.submit()
+await new Promise((resolve) => setTimeout(resolve, 0))
+const chipEdit = editRequests.at(-1)
+if (chipEdit?.url !== '/dsh-harness-chat-control/session-edit'
+  || chipEdit?.payload?.sessionId !== 'desktop-session-1'
+  || chipEdit?.payload?.startSeq !== 50
+  || chipEdit?.payload?.targetText !== '请把答案改短一些') {
+  throw new Error(`The reference edit was not armed for the original message: ${JSON.stringify(chipEdit)}`)
+}
+if (chipEdit.payload.text !== expectedChipText || chipEdit.payload.text.includes('dsh-chat-control:')) {
+  throw new Error(`The reference edit was armed with the raw clipboard token instead of the serialized text: ${JSON.stringify(chipEdit.payload.text)}`)
+}
+if (chipSubmitCalls !== 1 || sourcePrompts.at(-1)?.[0]?.text !== expectedChipText) {
+  throw new Error(`The reference edit did not reach the native submit with the serialized text: ${JSON.stringify(sourcePrompts.at(-1))}`)
+}
+if (revisionProps.revisionStore.getSnapshot().pending !== null) {
+  throw new Error('The reference edit state was not cleared after the replacement send')
 }
 
 console.log('dsh-harness-chat-control: static and loader validation passed')

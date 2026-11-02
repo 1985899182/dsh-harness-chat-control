@@ -36,12 +36,15 @@ node scripts/compat-check.mjs  # 只跑宿主接缝探测（需已安装 DSH Des
 | C9 | 标签批量关闭 | Better Sidebar 的 tab 菜单与 `closeTab` 族 | 手动 | 右键标签菜单是否仍有「关闭其他／左侧／右侧」 |
 | C10 | 市场卡片宿主要求 | npm 上的 manifest：`engines.dsh` 或 `@deepseek-ai/dsh-*` peer | 手动（`registry.npmjs.org/<包>/latest`） | 卡片显示「宿主要求未知」= npm 上读不到 manifest |
 | C11 | 安装命令 | `dsh plugin --profile <profile> add`（参数原样转给 profile 的 pnpm） | 手动 | `dsh plugin --help` 是否仍有 `add`、`--allow-build`、`--save-exact` |
+| C12 | 侧边对话划选引用 | 侧边转录的 `.dshhc-sidechat-view` / `.dshhc-sidechat-native-view` 包围层 + `sessions.subagentAddress(child).parentSessionId` | `session.subagent-address` | 在侧边对话里划选是否出现工具条；「添加到对话」是否进主会话输入框而不是子会话 |
+| C13 | 编辑铅笔不串标签 | 聊天行的 `data-chat-flow-kind` / `data-chat-flow-key` / `data-turn-tail`；标签切换只改 class/style | `chat.flow-rows` | 切主会话或侧边标签后，铅笔是否还停在旧标签坐标；旧标签的铅笔是否消失 |
+| C14 | 铅笔走原地替换 | `conversation.input.dock` 槽 + InputBar 的 `inputTriggers.serializeReference`（引用 chip 先序列化再提交） | `composer.dock` | 修改一条带引用 chip 的消息后，是否原地替换旧轮次而不是新开一轮 |
 
 ## 升级 DSH 后的处理顺序
 
 1. 改 `package.json` 的 `version`、`engines.dsh`、三处 `@deepseek-ai/dsh-*` peer；
 2. 跑 `node scripts/compat-check.mjs`，按 `FAIL` 的 id 查上表；
-3. 手测 C1、C2、C3、C5、C9（这几项没有自动信号）；
+3. 手测 C1、C2、C3、C5、C9（这几项没有自动信号）；C12–C14 先确认 `compat-check` 三项 `PASS`，再各点一次：侧边划选引用、切标签看铅笔、改一条带引用 chip 的消息；
 4. 同步 `scripts/validate.mjs` 里硬编码的版本号与 `scripts/install.ps1`、`scripts/install-generation.mjs` 的 `Ref`；
 5. 发布 npm 后确认 `latest` 的 `engines.dsh` 可读，市场卡片的宿主要求才会更新。
 

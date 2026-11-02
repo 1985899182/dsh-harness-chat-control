@@ -42,6 +42,7 @@ const read = (pkg, file) => {
 const conversation = read('@deepseek-ai/dsh-client-ui-conversation', 'client.js')
 const sessions = read('@deepseek-ai/dsh-api-session-controller', 'client.js')
 const sessionTypes = read('@deepseek-ai/dsh-api-session-controller', 'typert.host.js')
+const chat = read('@deepseek-ai/dsh-client-ui-chat', 'client.js')
 
 const checks = [
   {
@@ -78,6 +79,21 @@ const checks = [
     id: 'session.cancel',
     hint: 'scoped cancel verb still stops a running turn (edit-while-generating)',
     ok: conversation.includes('scopedSession("cancel")') || sessions.includes('"cancel"')
+  },
+  {
+    id: 'session.subagent-address',
+    hint: 'subagentAddress(id) still resolves a sidechat child to its parentSessionId',
+    ok: sessions.includes('subagentAddress(') && sessions.includes('parentSessionId')
+  },
+  {
+    id: 'chat.flow-rows',
+    hint: 'chat rows still carry data-chat-flow-kind/-key and data-turn-tail for the edit pins',
+    ok: chat.includes('"data-chat-flow-key"') && chat.includes('"data-chat-flow-kind"') && chat.includes('"data-turn-tail"')
+  },
+  {
+    id: 'composer.dock',
+    hint: 'conversation.input.dock is injected and InputBar still serializes reference chips',
+    ok: conversation.includes('"conversation.input.dock"') && conversation.includes('serializeReference')
   }
 ]
 
