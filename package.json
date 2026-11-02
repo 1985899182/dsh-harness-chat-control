@@ -1,6 +1,6 @@
 {
   "name": "dsh-harness-chat-control",
-  "version": "0.3.11",
+  "version": "0.3.12",
   "description": "Selection quoting, independent side-chat follow-ups, stop-and-rewrite during generation, and batch tab close for DSH Desktop.",
   "type": "module",
   "main": "./lib/index.js",

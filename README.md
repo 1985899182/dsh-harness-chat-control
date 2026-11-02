@@ -48,7 +48,7 @@
 ```powershell
 # 1. 先完全退出 DSH Desktop
 # 2. 用官方插件命令装入 web profile
-dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.11"
+dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.12"
 # 3. 重新打开 DSH Desktop
 ```
 
@@ -58,7 +58,7 @@ dsh plugin --profile web add --save-exact --allow-build=node-pty "git+https://gi
 $env:DSH_HOME = "$env:APPDATA\dsh-desktop\harness"
 $env:PATH = "$env:DSH_HOME\.desktop-bin;$env:PATH"
 $cli = '<DSH Desktop 安装目录>\resources\app.asar\node_modules\@deepseek-ai\dsh\lib\bin.js'
-& "$env:DSH_HOME\.desktop-bin\node.cmd" $cli plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.11"
+& "$env:DSH_HOME\.desktop-bin\node.cmd" $cli plugin --profile web add --save-exact --allow-build=node-pty "git+https://github.com/1985899182/dsh-harness-chat-control.git#v0.3.12"
 ```
 
 出错时按现象改方向：
@@ -73,6 +73,7 @@ $cli = '<DSH Desktop 安装目录>\resources\app.asar\node_modules\@deepseek-ai\
 
 ## 更新记录
 
+- **v0.3.12**：侧边对话里划选回答现在也能引用到主对话（以前工具条只在主转录出现）；切标签不再残留上一页的编辑铅笔；编辑带引用胶囊的消息会原地替换，不再追加成新的一轮。
 - **v0.3.11**：修复侧边对话的引用胶囊被挤进 24px 附件按钮——删除按钮会压住占位提示，点「×」还会误触图片选择；现在胶囊按自身宽度铺开，点击只移除引用。
 - **v0.3.10**：侧边对话可以直接选图或粘贴截图提问；新增宿主兼容清单与接缝自动检测（随 `npm test` 运行）。
 - **v0.3.9**：侧边输入框隐藏不可用的「+」和宿主自带的上下文占用标识；生成中点「编辑消息」会先停止再回填。
